@@ -18,7 +18,7 @@ import (
 
 var (
 	IgnoredNamespaces = []string{"kube-system", "local-path-storage", consts.DefaultNamespace}
-	SkipAnnotation    = "odigos.io/skip"
+	SkipAnnotation    = "logzio.io/skip"
 )
 
 func shouldSkip(annotations map[string]string, namespace string) bool {
@@ -157,17 +157,6 @@ func isDataCollectionReady(ctx context.Context, c client.Client) bool {
 
 	return false
 }
-
-// TODO delete of not needed
-//func getOdigosConfiguration(ctx context.Context, c client.Client) (*apiV1.OdigosConfiguration, error) {
-//	var odigosConfig apiV1.OdigosConfiguration
-//	err := c.Get(ctx, client.ObjectKey{Namespace: utils.GetCurrentNamespace(), Name: consts.DefaultOdigosConfigurationName}, &odigosConfig)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return &odigosConfig, nil
-//}
 
 func getInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Client, ownerKey string) (*apiV1.InstrumentedApplicationList, error) {
 	var instrumentedApps apiV1.InstrumentedApplicationList

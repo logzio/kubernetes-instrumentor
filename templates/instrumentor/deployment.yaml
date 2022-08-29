@@ -61,7 +61,5 @@ spec:
             memory: 64Mi
         securityContext:
           allowPrivilegeEscalation: false
-      securityContext:
-        runAsNonRoot: true
       serviceAccountName: logzio-instrumentor
       terminationGracePeriodSeconds: 10

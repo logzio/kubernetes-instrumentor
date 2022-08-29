@@ -6,7 +6,7 @@ const (
 	LangDetectionContainerAnnotationKey = "logzio/lang-detection-pod"
 	CurrentNamespaceEnvVar              = "CURRENT_NS"
 	DefaultNamespace                    = "monitoring"
-	DefaultOdigosConfigurationName      = "logzio-config"
+	DefaultLogzioConfigurationName      = "logzio-config"
 	OTLPPort                            = 4317
 	OTLPHttpPort                        = 4318
 )
