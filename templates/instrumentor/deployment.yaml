@@ -35,11 +35,11 @@ spec:
           - --health-probe-bind-address=:8081
           - --metrics-bind-address=127.0.0.1:8080
           - --leader-elect
-          - --lang-detector-tag=v0.0.8
+          - --lang-detector-tag=v0.0.10
           - --lang-detector-image=logzio/lang-detector
         command:
           - /app
-        image: "logzio/instrumentor:v0.0.8"
+        image: "logzio/instrumentor:v0.0.10"
         env:
           - name: CURRENT_NS
             valueFrom:

@@ -4,12 +4,6 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type InstrumentationMode string
 
-// TODO delete if not needed
-//const (
-//	OptInInstrumentationMode  InstrumentationMode = "OPT_IN"
-//	OptOutInstrumentationMode InstrumentationMode = "OPT_OUT"
-//)
-
 // LogzioConfigurationSpec defines the desired state of LogzioConfiguration
 type LogzioConfigurationSpec struct {
 	InstrumentationMode InstrumentationMode `json:"instrumentationMode"`
