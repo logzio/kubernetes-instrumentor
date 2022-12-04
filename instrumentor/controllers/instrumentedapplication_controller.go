@@ -41,6 +41,13 @@ var (
 	apiGVStr    = v1.GroupVersion.String()
 )
 
+const (
+	istioAnnotationKey     = "sidecar.istio.io/inject"
+	istioAnnotationValue   = "false"
+	linkerdAnnotationKey   = "linkerd.io/inject"
+	linkerdAnnotationValue = "disabled"
+)
+
 // InstrumentedApplicationReconciler reconciles a InstrumentedApplication object
 type InstrumentedApplicationReconciler struct {
 	client.Client
@@ -223,6 +230,8 @@ func (r *InstrumentedApplicationReconciler) createLangDetectionPod(targetPod *co
 			Namespace:    targetPod.Namespace,
 			Annotations: map[string]string{
 				consts.LangDetectionContainerAnnotationKey: "true",
+				istioAnnotationKey:                         istioAnnotationValue,
+				linkerdAnnotationKey:                       linkerdAnnotationValue,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -259,10 +268,16 @@ func (r *InstrumentedApplicationReconciler) createLangDetectionPod(targetPod *co
 func (r *InstrumentedApplicationReconciler) getContainerNames(pod *corev1.Pod) []string {
 	var result []string
 	for _, c := range pod.Spec.Containers {
-		result = append(result, c.Name)
+		if !r.skipContainer(c.Name) {
+			result = append(result, c.Name)
+		}
 	}
 
 	return result
+}
+
+func (r *InstrumentedApplicationReconciler) skipContainer(name string) bool {
+	return name == "istio-proxy" || name == "linkerd-proxy"
 }
 
 func (r *InstrumentedApplicationReconciler) getOwnerTemplateLabels(ctx context.Context, instrumentedApp *v1.InstrumentedApplication) (map[string]string, error) {
