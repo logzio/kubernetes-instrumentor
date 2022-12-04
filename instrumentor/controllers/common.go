@@ -6,7 +6,6 @@ import (
 	"github.com/go-logr/logr"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
-	"github.com/logzio/kubernetes-instrumentor/common/utils"
 	"github.com/logzio/kubernetes-instrumentor/instrumentor/patch"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -141,21 +140,7 @@ func shouldInstrument(ctx context.Context, instApp *apiV1.InstrumentedApplicatio
 }
 
 func isDataCollectionReady(ctx context.Context, c client.Client) bool {
-	logger := log.FromContext(ctx)
-	var collectorGroups apiV1.CollectorsGroupList
-	err := c.List(ctx, &collectorGroups, client.InNamespace(utils.GetCurrentNamespace()))
-	if err != nil {
-		logger.Error(err, "error getting collectors groups, skipping instrumentation")
-		return false
-	}
-
-	for _, cg := range collectorGroups.Items {
-		if cg.Spec.Role == apiV1.CollectorsGroupRoleDataCollection && cg.Status.Ready {
-			return true
-		}
-	}
-
-	return false
+	return true
 }
 
 func getInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Client, ownerKey string) (*apiV1.InstrumentedApplicationList, error) {
