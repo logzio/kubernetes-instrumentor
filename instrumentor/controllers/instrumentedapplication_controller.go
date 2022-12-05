@@ -99,8 +99,8 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			logger.Error(err, "error detecting language")
 		}
 		return ctrl.Result{}, err
-	}
 
+	}
 	// Language detection is in progress, check if lang detection pods finished
 	if instrumentedApp.Status.LangDetection.Phase == v1.RunningLangDetectionPhase {
 		var childPods corev1.PodList
@@ -116,7 +116,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				if containerStatus.State.Terminated == nil {
 					continue
 				}
-
 				// Write detection result
 				result := containerStatus.State.Terminated.Message
 				var detectionResult []common.LanguageByContainer
@@ -151,7 +150,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 	}
-
 	// Clean up finished pods
 	if instrumentedApp.Status.LangDetection.Phase == v1.CompletedLangDetectionPhase ||
 		instrumentedApp.Status.LangDetection.Phase == v1.ErrorLangDetectionPhase {
@@ -161,7 +159,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			logger.Error(err, "could not find child pods")
 			return ctrl.Result{}, err
 		}
-
 		for _, pod := range childPods.Items {
 			if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 				if !r.DeleteLangDetectorPods {
@@ -176,7 +173,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 	}
-
 	return ctrl.Result{}, nil
 }
 

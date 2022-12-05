@@ -14,11 +14,6 @@ const (
 	LogzioMonitoringService = "logzio-monitoring-otel-collector.monitoring.svc.cluster.local"
 )
 
-type CollectorInfo struct {
-	Hostname string
-	Port     int
-}
-
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool

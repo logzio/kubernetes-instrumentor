@@ -98,7 +98,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	}
 
 	// if instrumentation conditions are met
-	if shouldInstrument(ctx, &instApp, c, logger) {
+	if shouldInstrument(podTemplateSpec, logger) {
 		// Compute .status.instrumented field
 		instrumneted, err := patch.IsInstrumented(podTemplateSpec, &instApp)
 		if err != nil {
@@ -134,8 +134,13 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	return nil
 }
 
-// TODO implement or delete
-func shouldInstrument(ctx context.Context, instApp *apiV1.InstrumentedApplication, c client.Client, logger logr.Logger) bool {
+func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
+	annotations := podSpec.GetAnnotations()
+	if annotations["logz.io/instrument"] != "true" {
+		logger.V(0).Info("skipping instrumentation, `logz.io/instrument` annotation not found or set to `false`")
+		return false
+	}
+	logger.V(0).Info("Instrumenting pod: " + podSpec.GetName())
 	return true
 }
 
