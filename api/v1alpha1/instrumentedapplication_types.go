@@ -22,7 +22,6 @@ import (
 )
 
 // InstrumentedApplicationSpec defines the desired state of InstrumentedApplication
-
 type InstrumentedApplicationSpec struct {
 	Languages                []common.LanguageByContainer `json:"languages,omitempty"`
 	Enabled                  *bool                        `json:"enabled,omitempty"`
