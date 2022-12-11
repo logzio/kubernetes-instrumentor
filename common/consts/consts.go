@@ -9,6 +9,11 @@ const (
 	DefaultLogzioConfigurationName      = "logzio-config"
 	OTLPPort                            = 4317
 	OTLPHttpPort                        = 4318
+	AppDetectorContainerAnnotationKey   = "logzio/app-detection-pod"
+	DefaultMonitoringNamespace          = "monitoring"
+	KubeSystemNamespace                 = "kube-system"
+	GateKeeperSystemNamespace           = "gatekeeper-system"
+	LocalPathStorageNamespace           = "local-path-storage"
 )
 
 var (

@@ -3,7 +3,7 @@ package inspectors
 import (
 	"fmt"
 	"github.com/logzio/kubernetes-instrumentor/common"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/process"
+	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 	"io/ioutil"
 	"strings"
 )
@@ -15,7 +15,7 @@ const (
 	dotnet = "DOTNET"
 )
 
-var dotNet = &dotnetInspector{}
+var DotNet = &dotnetInspector{}
 
 func (d *dotnetInspector) Inspect(p *process.Details) (common.ProgrammingLanguage, bool) {
 	data, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/environ", p.ProcessID))

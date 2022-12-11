@@ -57,7 +57,7 @@ type InstrumentedApplicationReconciler struct {
 	DeleteLangDetectorPods bool
 }
 
-// Reconcile is responsible for language detection. The function starts the lang detection process if the InstrumentedApplication
+// Reconcile is responsible for language detection. The function starts the lang detection process-app if the InstrumentedApplication
 // object does not have a languages field. In addition, Reconcile will clean up lang detection pods upon completion / error
 func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -77,9 +77,9 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, nil
 	}
 
-	// Language not detected yet - start the lang detection process
+	// Language not detected yet - start the lang detection process-app
 	if r.shouldStartLangDetection(&instrumentedApp) {
-		logger.V(0).Info("starting lang detection process")
+		logger.V(0).Info("starting lang detection process-app")
 
 		instrumentedApp.Status.LangDetection.Phase = v1.RunningLangDetectionPhase
 		err = r.Status().Update(ctx, &instrumentedApp)
@@ -118,13 +118,15 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				}
 				// Write detection result
 				result := containerStatus.State.Terminated.Message
-				var detectionResult []common.LanguageByContainer
+				//TODO the unmarshaling of the detection result
+				//var detectionResult []common.LanguageByContainer
+				var detectionResult common.DetectionResult
 				err = json.Unmarshal([]byte(result), &detectionResult)
 				if err != nil {
 					logger.Error(err, "error parsing detection result")
 					return ctrl.Result{}, err
 				} else {
-					instrumentedApp.Spec.Languages = detectionResult
+					instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
 					err = r.Update(ctx, &instrumentedApp)
 					if err != nil {
 						logger.Error(err, "error updating InstrumentedApp object with detection result")
