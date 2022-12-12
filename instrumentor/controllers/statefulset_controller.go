@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-logr/logr"
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,18 +62,22 @@ func (r *StatefulSetReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	err = r.instrumentStatefulset(ctx, req, ss, logger)
+	return ctrl.Result{}, nil
+}
+
+func (r *StatefulSetReconciler) instrumentStatefulset(ctx context.Context, req ctrl.Request, ss appsv1.StatefulSet, logger logr.Logger) error {
 	if shouldSkip(ss.Annotations, ss.Namespace) {
 		logger.V(5).Info("skipped statefulset")
-		return ctrl.Result{}, nil
+		return nil
 	}
 
-	err = syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, ss.Status.ReadyReplicas, &ss, &ss.Spec.Template, instAppSSOwnerKey)
+	err := syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, ss.Status.ReadyReplicas, &ss, &ss.Spec.Template, instAppSSOwnerKey)
 	if err != nil {
 		logger.Error(err, "error syncing instrumented apps with statefulsets")
-		return ctrl.Result{}, err
+		return err
 	}
-
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

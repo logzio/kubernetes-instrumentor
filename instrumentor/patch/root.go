@@ -1,10 +1,13 @@
 package patch
 
 import (
+	"context"
 	"fmt"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerLog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -19,6 +22,11 @@ type Patcher interface {
 	IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool
 }
 
+//type AnnotationPatcher interface {
+//	Patch(ctx context.Context, detected *apiV1.AppDetector, object client.Object) error
+//	shouldPatch(annotations map[string]string, namespace string) bool
+//}
+
 var patcherMap = map[common.ProgrammingLanguage]Patcher{
 	common.JavaProgrammingLanguage:       java,
 	common.PythonProgrammingLanguage:     python,
@@ -26,6 +34,8 @@ var patcherMap = map[common.ProgrammingLanguage]Patcher{
 	common.JavascriptProgrammingLanguage: nodeJs,
 	common.GoProgrammingLanguage:         golang,
 }
+
+var annotationPatcherMap = map[string]AnnotationPatcher{}
 
 func ModifyObject(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) error {
 	for _, l := range getLangsInResult(instrumentation) {
@@ -94,4 +104,59 @@ func calculateAppName(podSpace *v1.PodTemplateSpec, currentContainer *v1.Contain
 	}
 
 	return instrumentation.ObjectMeta.OwnerReferences[0].Name
+}
+
+func getApplicationFromDetectionResult(ctx context.Context, instrumentedApplication *apiV1.InstrumentedApplication) string {
+	logger := controllerLog.FromContext(ctx)
+	var detectedApp = ""
+
+	if instrumentedApplication.Spec.DetectedApplication != (common.ApplicationByContainer{}) {
+		logger.V(5).Info("Added detected app to result", "app", instrumentedApplication.Spec.DetectedApplication.Application)
+		detectedApp = string(instrumentedApplication.Spec.DetectedApplication.Application)
+	}
+
+	return detectedApp
+}
+
+func IsDetected(ctx context.Context, original *v1.PodTemplateSpec, instrumentedApp *apiV1.InstrumentedApplication) (bool, error) {
+	isDetected := true
+	app := getApplicationFromDetectionResult(ctx, instrumentedApp)
+	if app != "" {
+		p, exists := annotationPatcherMap[app]
+		if !exists {
+			return false, fmt.Errorf("unable to find patcher for %s", app)
+		}
+
+		isDetected = isDetected && p.shouldPatch(original.Annotations, original.Namespace)
+	}
+
+	return isDetected, nil
+}
+
+func ModifyObjectWithAnnotation(ctx context.Context, detectedApplication *apiV1.InstrumentedApplication, object client.Object) error {
+	app := getApplicationFromDetectionResult(ctx, detectedApplication)
+	if app != "" {
+		p, exists := annotationPatcherMap[app]
+		if !exists {
+			return fmt.Errorf("unable to find patcher for app %s", app)
+		}
+
+		err := p.Patch(ctx, detectedApplication, object)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func init() {
+	addAnnotationPatcher()
+}
+
+func addAnnotationPatcher() {
+	for _, app := range common.Applications {
+		annotationPatcherMap[string(app)] = *AnnotationPatcherInst
+	}
 }

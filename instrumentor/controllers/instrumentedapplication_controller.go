@@ -73,15 +73,16 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	// If language already detected - there is nothing to do
+	// TODO if language not detected - print error and continue to app detectionnn
 	if r.isLangDetected(&instrumentedApp) {
-		return ctrl.Result{}, nil
+		logger.V(0).Info("language was already detected, continuing to app detection")
 	}
 
 	// Language not detected yet - start the lang detection process-app
 	if r.shouldStartLangDetection(&instrumentedApp) {
 		logger.V(0).Info("starting lang detection process-app")
 
-		instrumentedApp.Status.LangDetection.Phase = v1.RunningLangDetectionPhase
+		instrumentedApp.Status.InstrumentationDetection.Phase = v1.RunningInstrumentationDetectionPhase
 		err = r.Status().Update(ctx, &instrumentedApp)
 		if err != nil {
 			logger.Error(err, "error updating instrument app status")
@@ -102,7 +103,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 
 	}
 	// Language detection is in progress, check if lang detection pods finished
-	if instrumentedApp.Status.LangDetection.Phase == v1.RunningLangDetectionPhase {
+	if instrumentedApp.Status.InstrumentationDetection.Phase == v1.RunningInstrumentationDetectionPhase {
 		var childPods corev1.PodList
 		err = r.List(ctx, &childPods, client.InNamespace(req.Namespace), client.MatchingFields{podOwnerKey: req.Name})
 		if err != nil {
@@ -133,7 +134,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 						return ctrl.Result{}, err
 					}
 
-					instrumentedApp.Status.LangDetection.Phase = v1.CompletedLangDetectionPhase
+					instrumentedApp.Status.InstrumentationDetection.Phase = v1.CompletedInstrumentationDetectionPhase
 					err = r.Status().Update(ctx, &instrumentedApp)
 					if err != nil {
 						logger.Error(err, "error updating InstrumentedApp status with detection result")
@@ -142,7 +143,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else if pod.Status.Phase == corev1.PodFailed {
 				logger.V(0).Info("lang detection pod failed. marking as error")
-				instrumentedApp.Status.LangDetection.Phase = v1.ErrorLangDetectionPhase
+				instrumentedApp.Status.InstrumentationDetection.Phase = v1.ErrorInstrumentationDetectionPhase
 				err = r.Status().Update(ctx, &instrumentedApp)
 				if err != nil {
 					logger.Error(err, "error updating InstrumentedApp status")
@@ -153,8 +154,8 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 		}
 	}
 	// Clean up finished pods
-	if instrumentedApp.Status.LangDetection.Phase == v1.CompletedLangDetectionPhase ||
-		instrumentedApp.Status.LangDetection.Phase == v1.ErrorLangDetectionPhase {
+	if instrumentedApp.Status.InstrumentationDetection.Phase == v1.CompletedInstrumentationDetectionPhase ||
+		instrumentedApp.Status.InstrumentationDetection.Phase == v1.ErrorInstrumentationDetectionPhase {
 		var childPods corev1.PodList
 		err = r.List(ctx, &childPods, client.InNamespace(req.Namespace), client.MatchingFields{podOwnerKey: req.Name})
 		if err != nil {
@@ -179,7 +180,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 }
 
 func (r *InstrumentedApplicationReconciler) shouldStartLangDetection(app *v1.InstrumentedApplication) bool {
-	return app.Status.LangDetection.Phase == v1.PendingLangDetectionPhase
+	return app.Status.InstrumentationDetection.Phase == v1.PendingInstrumentationDetectionPhase
 }
 
 func (r *InstrumentedApplicationReconciler) isLangDetected(app *v1.InstrumentedApplication) bool {

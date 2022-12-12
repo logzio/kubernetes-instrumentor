@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/go-logr/logr"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
+	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	"github.com/logzio/kubernetes-instrumentor/instrumentor/patch"
 	v1 "k8s.io/api/core/v1"
@@ -16,7 +17,7 @@ import (
 )
 
 var (
-	IgnoredNamespaces = []string{"kube-system", "local-path-storage", "istio-system", "linkerd", consts.DefaultNamespace}
+	IgnoredNamespaces = []string{"kube-system", "local-path-storage", "istio-system", "linkerd", "gatekeeper-system", consts.DefaultNamespace}
 	SkipAnnotation    = "logzio.io/skip"
 )
 
@@ -75,8 +76,8 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		}
 
 		instrumentedApp.Status = apiV1.InstrumentedApplicationStatus{
-			LangDetection: apiV1.LangDetectionStatus{
-				Phase: apiV1.PendingLangDetectionPhase,
+			InstrumentationDetection: apiV1.InstrumentationStatus{
+				Phase: apiV1.PendingInstrumentationDetectionPhase,
 			},
 		}
 		err = c.Status().Update(ctx, &instrumentedApp)
@@ -91,46 +92,88 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		return errors.New("found more than one InstrumentedApp")
 	}
 
-	// If lang not detected yet - nothing to do
+	// if lang not detected - stay in function and check for app detection
 	instApp := instApps.Items[0]
-	if len(instApp.Spec.Languages) == 0 || instApp.Status.LangDetection.Phase != apiV1.CompletedLangDetectionPhase {
+	if instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
 		return nil
 	}
 
-	// if instrumentation conditions are met
 	if shouldInstrument(podTemplateSpec, logger) {
-		// Compute .status.instrumented field
-		instrumneted, err := patch.IsInstrumented(podTemplateSpec, &instApp)
+		err = processInstrumentedApps(ctx, podTemplateSpec, instApp, logger, c, object)
+		logger.Error(err, "Encountered an error while trying to process instrumented apps")
+	}
+
+	if instApp.Spec.DetectedApplication == (common.ApplicationByContainer{}) || instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
+		logger.V(5).Info("No new applications detected or app detection is still in progress")
+		return nil
+	}
+
+	if shouldDetectApps(podTemplateSpec, logger) {
+		err = processDetectedApps(ctx, req, c, podTemplateSpec, instApp, logger, object)
+		logger.Error(err, "Encountered an error while trying to process detected apps")
+	}
+
+	return err
+}
+
+func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	instrumented, err := patch.IsInstrumented(podTemplateSpec, &instApp)
+	if err != nil {
+		logger.Error(err, "error computing instrumented status")
+		return err
+	}
+	if instrumented != instApp.Status.Instrumented {
+		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
+		instApp.Status.Instrumented = instrumented
+		err = c.Status().Update(ctx, &instApp)
 		if err != nil {
 			logger.Error(err, "error computing instrumented status")
 			return err
 		}
-		if instrumneted != instApp.Status.Instrumented {
-			logger.V(0).Info("updating .status.instrumented", "instrumented", instrumneted)
-			instApp.Status.Instrumented = instrumneted
-			err = c.Status().Update(ctx, &instApp)
-			if err != nil {
-				logger.Error(err, "error computing instrumented status")
-				return err
-			}
+	}
+
+	// If not instrumented - patch deployment
+	if !instrumented {
+		err = patch.ModifyObject(podTemplateSpec, &instApp)
+		if err != nil {
+			logger.Error(err, "error patching deployment / statefulset")
+			return err
 		}
 
-		// If not instrumented - patch deployment
-		if !instrumneted {
-			err = patch.ModifyObject(podTemplateSpec, &instApp)
-			if err != nil {
-				logger.Error(err, "error patching deployment / statefulset")
-				return err
-			}
+		err = c.Update(ctx, object)
+		if err != nil {
+			logger.Error(err, "error instrumenting application")
+			return err
+		}
+	}
+	return nil
+}
 
-			err = c.Update(ctx, object)
-			if err != nil {
-				logger.Error(err, "error instrumenting application")
-				return err
-			}
+func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, object client.Object) error {
+	detected, err := patch.IsDetected(ctx, podTemplateSpec, &instApp)
+	if err != nil {
+		logger.Error(err, "error computing instrumented app status for annotation patching")
+		return err
+	}
+
+	if detected != instApp.Status.AppDetected {
+		instApp.Status.AppDetected = detected
+
+		c.Get(ctx, req.NamespacedName, &instApp)
+		instApp.Status.AppDetected = detected
+		err = c.Status().Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "Error computing instrumented app status for annotation patching")
 		}
 	}
 
+	if detected {
+		err = patch.ModifyObjectWithAnnotation(ctx, &instApp, object)
+		if err != nil {
+			logger.Error(err, "error patching deployment / statefulset with annotation")
+			return err
+		}
+	}
 	return nil
 }
 
@@ -141,6 +184,21 @@ func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 		return false
 	}
 	logger.V(0).Info("Instrumenting pod: " + podSpec.GetName())
+	return true
+}
+
+func shouldDetectApps(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
+	annotations := podSpec.GetAnnotations()
+	if val, exists := annotations[patch.SkipAppDetectionAnnotation]; exists && val == "true" {
+		logger.V(0).Info("skipping app detection, skip annotation was set")
+		return false
+	}
+
+	if _, exists := annotations[patch.ApplicationTypeAnnotation]; exists {
+		logger.V(0).Info("skipping app detection, application type annotation already exists")
+		return false
+	}
+
 	return true
 }
 

@@ -21,7 +21,7 @@ type Args struct {
 func main() {
 	args := parseArgs()
 	var containerResults []common.LanguageByContainer
-	var detectedAppsResults []common.ApplicationByContainer
+	var detectedAppResults common.ApplicationByContainer
 	for _, containerName := range args.ContainerNames {
 		processes, detected_apps, err := process.FindAllInContainer(args.PodUID, containerName)
 		if err != nil {
@@ -42,17 +42,18 @@ func main() {
 			})
 		}
 
-		if len(detectedAppName) > 0 {
-			detectedAppsResults = append(detectedAppsResults, common.ApplicationByContainer{
+		// Only one detected app is relevant (the rest is duplicated)
+		if len(detectedAppName) > 0 && detectedAppResults != (common.ApplicationByContainer{}) {
+			detectedAppResults = common.ApplicationByContainer{
 				ContainerName: containerName,
 				Application:   common.Application(detectedAppName[0]),
-			})
+			}
 		}
 	}
 
 	detectionResult := common.DetectionResult{
 		LanguageByContainer:    containerResults,
-		ApplicationByContainer: detectedAppsResults[0],
+		ApplicationByContainer: detectedAppResults,
 	}
 
 	err := publishDetectionResult(detectionResult)

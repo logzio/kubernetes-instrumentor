@@ -79,7 +79,7 @@ spec:
                   type: boolean
                 appdetected:
                   type: boolean
-                langDetection:
+                instrumentationDetection:
                   properties:
                     phase:
                       enum:
