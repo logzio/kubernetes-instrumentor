@@ -17,8 +17,7 @@ import (
 )
 
 var (
-	IgnoredNamespaces = []string{"kube-system", "local-path-storage", "istio-system", "linkerd", "gatekeeper-system", consts.DefaultNamespace}
-	SkipAnnotation    = "logzio.io/skip"
+	SkipAnnotation = "logzio.io/skip"
 )
 
 func shouldSkip(annotations map[string]string, namespace string) bool {
@@ -28,7 +27,7 @@ func shouldSkip(annotations map[string]string, namespace string) bool {
 		}
 	}
 
-	for _, ns := range IgnoredNamespaces {
+	for _, ns := range consts.IgnoredNamespaces {
 		if namespace == ns {
 			return true
 		}
@@ -65,7 +64,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 
 		err = ctrl.SetControllerReference(object, &instrumentedApp, scheme)
 		if err != nil {
-			logger.Error(err, "error creating InstrumentedApp object")
+			logger.Error(err, "error creating InstrumentedApp object, failed to set controller reference")
 			return err
 		}
 
@@ -82,7 +81,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		}
 		err = c.Status().Update(ctx, &instrumentedApp)
 		if err != nil {
-			logger.Error(err, "error creating InstrumentedApp object")
+			logger.Error(err, "error updating InstrumentedApp object with phase")
 		}
 
 		return nil
@@ -150,6 +149,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 }
 
 func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, object client.Object) error {
+	logger.V(5).Info("Starting app detection")
 	detected, err := patch.IsDetected(ctx, podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented app status for annotation patching")
@@ -158,7 +158,6 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 
 	if detected != instApp.Status.AppDetected {
 		instApp.Status.AppDetected = detected
-
 		c.Get(ctx, req.NamespacedName, &instApp)
 		instApp.Status.AppDetected = detected
 		err = c.Status().Update(ctx, &instApp)

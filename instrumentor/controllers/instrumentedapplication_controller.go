@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-logr/logr"
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
@@ -51,10 +52,10 @@ const (
 // InstrumentedApplicationReconciler reconciles a InstrumentedApplication object
 type InstrumentedApplicationReconciler struct {
 	client.Client
-	Scheme                 *runtime.Scheme
-	LangDetectorTag        string
-	LangDetectorImage      string
-	DeleteLangDetectorPods bool
+	Scheme                            *runtime.Scheme
+	InstrumentationDetectorTag        string
+	InstrumentationDetectorImage      string
+	DeleteInstrumentationDetectorPods bool
 }
 
 // Reconcile is responsible for language detection. The function starts the lang detection process-app if the InstrumentedApplication
@@ -68,41 +69,20 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			return ctrl.Result{}, nil
 		}
 
-		logger.Error(err, "error fetching object")
+		logger.Error(err, "error fetching instrumented application object")
 		return ctrl.Result{}, err
 	}
 
-	// If language already detected - there is nothing to do
-	// TODO if language not detected - print error and continue to app detectionnn
-	if r.isLangDetected(&instrumentedApp) {
-		logger.V(0).Info("language was already detected, continuing to app detection")
+	// If language and app were already detected - there is nothing to do
+	if r.isLangDetected(&instrumentedApp) && r.isAppDetected(&instrumentedApp) {
+		logger.V(0).Info("language and app were already detected skipping detection")
+	} else {
+		if r.shouldStartDetection(&instrumentedApp) {
+			return r.startDetection(ctx, logger, instrumentedApp)
+		}
 	}
 
-	// Language not detected yet - start the lang detection process-app
-	if r.shouldStartLangDetection(&instrumentedApp) {
-		logger.V(0).Info("starting lang detection process-app")
-
-		instrumentedApp.Status.InstrumentationDetection.Phase = v1.RunningInstrumentationDetectionPhase
-		err = r.Status().Update(ctx, &instrumentedApp)
-		if err != nil {
-			logger.Error(err, "error updating instrument app status")
-			return ctrl.Result{}, err
-		}
-
-		labels, err := r.getOwnerTemplateLabels(ctx, &instrumentedApp)
-		if err != nil {
-			logger.Error(err, "error getting owner labels")
-			return ctrl.Result{}, err
-		}
-
-		err = r.detectLanguage(ctx, &instrumentedApp, labels)
-		if err != nil {
-			logger.Error(err, "error detecting language")
-		}
-		return ctrl.Result{}, err
-
-	}
-	// Language detection is in progress, check if lang detection pods finished
+	// Language/app detection is in progress, check if lang detection pods finished
 	if instrumentedApp.Status.InstrumentationDetection.Phase == v1.RunningInstrumentationDetectionPhase {
 		var childPods corev1.PodList
 		err = r.List(ctx, &childPods, client.InNamespace(req.Namespace), client.MatchingFields{podOwnerKey: req.Name})
@@ -110,6 +90,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			logger.Error(err, "could not find child pods")
 			return ctrl.Result{}, err
 		}
+
 		for _, pod := range childPods.Items {
 			// If pod finished -  read detection result
 			if pod.Status.Phase == corev1.PodSucceeded && len(pod.Status.ContainerStatuses) > 0 {
@@ -117,29 +98,9 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				if containerStatus.State.Terminated == nil {
 					continue
 				}
-				// Write detection result
-				result := containerStatus.State.Terminated.Message
-				//TODO the unmarshaling of the detection result
-				//var detectionResult []common.LanguageByContainer
-				var detectionResult common.DetectionResult
-				err = json.Unmarshal([]byte(result), &detectionResult)
+				err = r.updatePodWithDetectionResult(ctx, containerStatus, logger, instrumentedApp)
 				if err != nil {
-					logger.Error(err, "error parsing detection result")
 					return ctrl.Result{}, err
-				} else {
-					instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
-					err = r.Update(ctx, &instrumentedApp)
-					if err != nil {
-						logger.Error(err, "error updating InstrumentedApp object with detection result")
-						return ctrl.Result{}, err
-					}
-
-					instrumentedApp.Status.InstrumentationDetection.Phase = v1.CompletedInstrumentationDetectionPhase
-					err = r.Status().Update(ctx, &instrumentedApp)
-					if err != nil {
-						logger.Error(err, "error updating InstrumentedApp status with detection result")
-						return ctrl.Result{}, err
-					}
 				}
 			} else if pod.Status.Phase == corev1.PodFailed {
 				logger.V(0).Info("lang detection pod failed. marking as error")
@@ -164,7 +125,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 		}
 		for _, pod := range childPods.Items {
 			if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
-				if !r.DeleteLangDetectorPods {
+				if !r.DeleteInstrumentationDetectorPods {
 					return ctrl.Result{}, nil
 				}
 
@@ -179,12 +140,68 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 	return ctrl.Result{}, nil
 }
 
-func (r *InstrumentedApplicationReconciler) shouldStartLangDetection(app *v1.InstrumentedApplication) bool {
+func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx context.Context, containerStatus corev1.ContainerStatus, logger logr.Logger, instrumentedApp v1.InstrumentedApplication) error {
+	// Write detection result
+	result := containerStatus.State.Terminated.Message
+	//var detectionResult []common.LanguageByContainer
+	var detectionResult common.DetectionResult
+	err := json.Unmarshal([]byte(result), &detectionResult)
+	if err != nil {
+		logger.Error(err, "error parsing detection result")
+		return err
+	} else {
+		instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
+		instrumentedApp.Spec.DetectedApplication = detectionResult.ApplicationByContainer
+		err = r.Update(ctx, &instrumentedApp)
+		if err != nil {
+			logger.Error(err, "error updating InstrumentedApp object with detection result")
+			return err
+		}
+
+		instrumentedApp.Status.InstrumentationDetection.Phase = v1.CompletedInstrumentationDetectionPhase
+		err = r.Status().Update(ctx, &instrumentedApp)
+		if err != nil {
+			logger.Error(err, "error updating InstrumentedApp phase status with detection result")
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *InstrumentedApplicationReconciler) startDetection(ctx context.Context, logger logr.Logger, instrumentedApp v1.InstrumentedApplication) (ctrl.Result, error) {
+	logger.V(0).Info("starting detection process")
+
+	instrumentedApp.Status.InstrumentationDetection.Phase = v1.RunningInstrumentationDetectionPhase
+	err := r.Status().Update(ctx, &instrumentedApp)
+	if err != nil {
+		logger.Error(err, "error updating instrument app status")
+		return ctrl.Result{}, err
+	}
+
+	labels, err := r.getOwnerTemplateLabels(ctx, &instrumentedApp)
+	if err != nil {
+		logger.Error(err, "error getting owner labels")
+		return ctrl.Result{}, err
+	}
+
+	err = r.detectLanguage(ctx, &instrumentedApp, labels)
+	if err != nil {
+		logger.Error(err, "error detecting language")
+	}
+	return ctrl.Result{}, err
+}
+
+func (r *InstrumentedApplicationReconciler) shouldStartDetection(app *v1.InstrumentedApplication) bool {
 	return app.Status.InstrumentationDetection.Phase == v1.PendingInstrumentationDetectionPhase
 }
 
 func (r *InstrumentedApplicationReconciler) isLangDetected(app *v1.InstrumentedApplication) bool {
 	return len(app.Spec.Languages) > 0
+}
+
+func (r *InstrumentedApplicationReconciler) isAppDetected(app *v1.InstrumentedApplication) bool {
+	return app.Spec.DetectedApplication != (common.ApplicationByContainer{})
 }
 
 func (r *InstrumentedApplicationReconciler) detectLanguage(ctx context.Context, app *v1.InstrumentedApplication, labels map[string]string) error {
@@ -225,19 +242,19 @@ func (r *InstrumentedApplicationReconciler) choosePods(ctx context.Context, labe
 func (r *InstrumentedApplicationReconciler) createLangDetectionPod(targetPod *corev1.Pod, instrumentedApp *v1.InstrumentedApplication) (*corev1.Pod, error) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-lang-detection-", targetPod.Name),
+			GenerateName: fmt.Sprintf("%s-instrumentation-detection-", targetPod.Name),
 			Namespace:    targetPod.Namespace,
 			Annotations: map[string]string{
-				consts.LangDetectionContainerAnnotationKey: "true",
-				istioAnnotationKey:                         istioAnnotationValue,
-				linkerdAnnotationKey:                       linkerdAnnotationValue,
+				consts.InstrumentationDetectionContainerAnnotationKey: "true",
+				istioAnnotationKey:   istioAnnotationValue,
+				linkerdAnnotationKey: linkerdAnnotationValue,
 			},
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  "lang-detector",
-					Image: fmt.Sprintf("%s:%s", r.LangDetectorImage, r.LangDetectorTag),
+					Name:  "instrumentation-detector",
+					Image: fmt.Sprintf("%s:%s", r.InstrumentationDetectorImage, r.InstrumentationDetectorTag),
 					Args: []string{
 						fmt.Sprintf("--pod-uid=%s", targetPod.UID),
 						fmt.Sprintf("--container-names=%s", strings.Join(r.getContainerNames(targetPod), ",")),

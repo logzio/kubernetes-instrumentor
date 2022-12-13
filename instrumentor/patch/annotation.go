@@ -3,7 +3,7 @@ package patch
 import (
 	"context"
 	"github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
-	"github.com/logzio/kubernetes-instrumentor/instrumentor/controllers"
+	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	goclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -86,7 +86,7 @@ func (d *AnnotationPatcher) shouldPatch(annotations map[string]string, namespace
 		}
 	}
 
-	for _, ns := range controllers.IgnoredNamespaces {
+	for _, ns := range consts.IgnoredNamespaces {
 		if namespace == ns {
 			return false
 		}
