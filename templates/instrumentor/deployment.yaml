@@ -35,8 +35,8 @@ spec:
           - --health-probe-bind-address=:8081
           - --metrics-bind-address=127.0.0.1:8080
           - --leader-elect
-          - --lang-detector-tag=v0.0.13-test
-          - --lang-detector-image=logzio/lang-detector
+          - --instrumentation-detector-tag=latest
+          - --instrumentation-detector-image=logzio/instrumentation-detector
         command:
           - /app
         image: "logzio/instrumentor:v0.0.13-test"

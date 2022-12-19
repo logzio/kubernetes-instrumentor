@@ -94,6 +94,13 @@ func (in *InstrumentedApplicationSpec) DeepCopyInto(out *InstrumentedApplication
 		*out = make([]common.LanguageByContainer, len(*in))
 		copy(*out, *in)
 	}
+
+	if in.DetectedApplication != (common.ApplicationByContainer{}) {
+		in, out := &in.DetectedApplication, &in.DetectedApplication
+		out.ContainerName = in.ContainerName
+		out.Application = in.Application
+	}
+
 	if in.Enabled != nil {
 		in, out := &in.Enabled, &out.Enabled
 		*out = new(bool)

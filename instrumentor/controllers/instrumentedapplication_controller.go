@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -98,7 +99,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				if containerStatus.State.Terminated == nil {
 					continue
 				}
-				err = r.updatePodWithDetectionResult(ctx, containerStatus, logger, instrumentedApp)
+				err = r.updatePodWithDetectionResult(ctx, containerStatus, logger, instrumentedApp, req.NamespacedName)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
@@ -140,16 +141,22 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 	return ctrl.Result{}, nil
 }
 
-func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx context.Context, containerStatus corev1.ContainerStatus, logger logr.Logger, instrumentedApp v1.InstrumentedApplication) error {
-	// Write detection result
+func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx context.Context, containerStatus corev1.ContainerStatus, logger logr.Logger, instrumentedApp v1.InstrumentedApplication, namespacedName types.NamespacedName) error {
+	// Read detection result
 	result := containerStatus.State.Terminated.Message
-	//var detectionResult []common.LanguageByContainer
 	var detectionResult common.DetectionResult
 	err := json.Unmarshal([]byte(result), &detectionResult)
+	logger.V(5).Info("Detection result from file: ", "result", detectionResult)
 	if err != nil {
 		logger.Error(err, "error parsing detection result")
 		return err
 	} else {
+		err = r.Get(ctx, namespacedName, &instrumentedApp)
+		if err != nil {
+			logger.Error(err, "error fetching updated InstrumentedApp object")
+			return err
+		}
+
 		instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
 		instrumentedApp.Spec.DetectedApplication = detectionResult.ApplicationByContainer
 		err = r.Update(ctx, &instrumentedApp)

@@ -32,7 +32,7 @@ func main() {
 		log.Printf("detection result: %s\n", processResults)
 
 		detectedAppName := appDetector.DetectApplication(detected_apps)
-		log.Printf("detection result: %s\n", processResults)
+		log.Printf("detection result: %s\n", detectedAppName)
 
 		if len(processResults) > 0 {
 			containerResults = append(containerResults, common.LanguageByContainer{
@@ -43,7 +43,7 @@ func main() {
 		}
 
 		// Only one detected app is relevant (the rest is duplicated)
-		if len(detectedAppName) > 0 && detectedAppResults != (common.ApplicationByContainer{}) {
+		if len(detectedAppName) > 0 {
 			detectedAppResults = common.ApplicationByContainer{
 				ContainerName: containerName,
 				Application:   common.Application(detectedAppName[0]),
