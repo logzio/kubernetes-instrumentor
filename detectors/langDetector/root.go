@@ -1,18 +1,19 @@
-package inspectors
+package langDetector
 
 import (
 	"github.com/logzio/kubernetes-instrumentor/common"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/process"
+	"github.com/logzio/kubernetes-instrumentor/detectors/langDetector/inspectors"
+	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 )
 
 type inspector interface {
 	Inspect(process *process.Details) (common.ProgrammingLanguage, bool)
 }
 
-var inspectorsList = []inspector{java, python, dotNet, nodeJs, golang}
+var inspectorsList = []inspector{inspectors.Java, inspectors.Python, inspectors.DotNet, inspectors.NodeJs, inspectors.Golang}
 
-// DetectLanguage returns a list of all the detected languages in the process list
-// For go applications the process path is also returned, in all other languages the value is empty
+// DetectLanguage returns a list of all the detected languages in the process-app list
+// For go applications the process-app path is also returned, in all other languages the value is empty
 func DetectLanguage(processes []process.Details) ([]common.ProgrammingLanguage, string) {
 	var result []common.ProgrammingLanguage
 	processName := ""

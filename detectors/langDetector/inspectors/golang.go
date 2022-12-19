@@ -3,8 +3,8 @@ package inspectors
 import (
 	"fmt"
 	"github.com/logzio/kubernetes-instrumentor/common"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/inspectors/goversion"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/process"
+	"github.com/logzio/kubernetes-instrumentor/detectors/langDetector/inspectors/goversion"
+	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 	"io/fs"
 	"os"
 	"runtime"
@@ -13,7 +13,7 @@ import (
 
 type golangInspector struct{}
 
-var golang = &golangInspector{}
+var Golang = &golangInspector{}
 
 func (g *golangInspector) Inspect(p *process.Details) (common.ProgrammingLanguage, bool) {
 	file := fmt.Sprintf("/proc/%d/exe", p.ProcessID)

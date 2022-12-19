@@ -2,13 +2,13 @@ package inspectors
 
 import (
 	"github.com/logzio/kubernetes-instrumentor/common"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/process"
+	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 	"strings"
 )
 
 type nodejsInspector struct{}
 
-var nodeJs = &nodejsInspector{}
+var NodeJs = &nodejsInspector{}
 
 const nodeProcessName = "node"
 

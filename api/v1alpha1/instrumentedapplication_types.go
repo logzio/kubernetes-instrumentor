@@ -23,28 +23,30 @@ import (
 
 // InstrumentedApplicationSpec defines the desired state of InstrumentedApplication
 type InstrumentedApplicationSpec struct {
-	Languages                []common.LanguageByContainer `json:"languages,omitempty"`
-	Enabled                  *bool                        `json:"enabled,omitempty"`
-	WaitingForDataCollection bool                         `json:"waitingForDataCollection"`
+	Languages                []common.LanguageByContainer  `json:"languages,omitempty"`
+	DetectedApplication      common.ApplicationByContainer `json:"application,omitempty"`
+	Enabled                  *bool                         `json:"enabled,omitempty"`
+	WaitingForDataCollection bool                          `json:"waitingForDataCollection"`
 }
 
 // InstrumentedApplicationStatus defines the observed state of InstrumentedApplication
 type InstrumentedApplicationStatus struct {
-	LangDetection LangDetectionStatus `json:"langDetection,omitempty"`
-	Instrumented  bool                `json:"instrumented"`
+	InstrumentationDetection InstrumentationStatus `json:"instrumentationDetection,omitempty"`
+	Instrumented             bool                  `json:"instrumented"`
+	AppDetected              bool                  `json:"appDetected"`
 }
 
-type LangDetectionStatus struct {
-	Phase LangDetectionPhase `json:"phase,omitempty"`
+type InstrumentationStatus struct {
+	Phase InstrumentationPhase `json:"phase,omitempty"`
 }
 
-type LangDetectionPhase string
+type InstrumentationPhase string
 
 const (
-	PendingLangDetectionPhase   LangDetectionPhase = "Pending"
-	RunningLangDetectionPhase   LangDetectionPhase = "Running"
-	CompletedLangDetectionPhase LangDetectionPhase = "Completed"
-	ErrorLangDetectionPhase     LangDetectionPhase = "Error"
+	PendingInstrumentationDetectionPhase   InstrumentationPhase = "Pending"
+	RunningInstrumentationDetectionPhase   InstrumentationPhase = "Running"
+	CompletedInstrumentationDetectionPhase InstrumentationPhase = "Completed"
+	ErrorInstrumentationDetectionPhase     InstrumentationPhase = "Error"
 )
 
 // InstrumentedApplication is the Schema for the instrumentedapplications API

@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/logzio/kubernetes-instrumentor/common"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/inspectors"
-	"github.com/logzio/kubernetes-instrumentor/langDetector/process"
+	"github.com/logzio/kubernetes-instrumentor/detectors/appDetector"
+	"github.com/logzio/kubernetes-instrumentor/detectors/langDetector"
+	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -20,14 +21,18 @@ type Args struct {
 func main() {
 	args := parseArgs()
 	var containerResults []common.LanguageByContainer
+	var detectedAppResults common.ApplicationByContainer
 	for _, containerName := range args.ContainerNames {
-		processes, err := process.FindAllInContainer(args.PodUID, containerName)
+		processes, detected_apps, err := process.FindAllInContainer(args.PodUID, containerName)
 		if err != nil {
 			log.Fatalf("could not find processes, error: %s\n", err)
 		}
 
-		processResults, processName := inspectors.DetectLanguage(processes)
+		processResults, processName := langDetector.DetectLanguage(processes)
 		log.Printf("detection result: %s\n", processResults)
+
+		detectedAppName := appDetector.DetectApplication(detected_apps)
+		log.Printf("detection result: %s\n", detectedAppName)
 
 		if len(processResults) > 0 {
 			containerResults = append(containerResults, common.LanguageByContainer{
@@ -37,9 +42,21 @@ func main() {
 			})
 		}
 
+		// Only one detected app is relevant (the rest is duplicated)
+		if len(detectedAppName) > 0 {
+			detectedAppResults = common.ApplicationByContainer{
+				ContainerName: containerName,
+				Application:   common.Application(detectedAppName[0]),
+			}
+		}
 	}
 
-	err := publishDetectionResult(containerResults)
+	detectionResult := common.DetectionResult{
+		LanguageByContainer:    containerResults,
+		ApplicationByContainer: detectedAppResults,
+	}
+
+	err := publishDetectionResult(detectionResult)
 	if err != nil {
 		log.Fatalf("could not publish detection result, error: %s\n", err)
 	}
@@ -57,7 +74,7 @@ func parseArgs() *Args {
 	return &result
 }
 
-func publishDetectionResult(result []common.LanguageByContainer) error {
+func publishDetectionResult(result common.DetectionResult) error {
 	data, err := json.Marshal(result)
 	if err != nil {
 		return err

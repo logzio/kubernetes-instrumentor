@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-logr/logr"
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -58,18 +59,28 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	if shouldSkip(dep.Annotations, dep.Namespace) {
-		logger.V(5).Info("skipped deployment")
-		return ctrl.Result{}, nil
-	}
-
-	err = syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, dep.Status.ReadyReplicas, &dep, &dep.Spec.Template, instAppDepOwnerKey)
+	err = r.instrumentDeployment(ctx, req, logger, dep)
 	if err != nil {
-		logger.Error(err, "error syncing instrumented apps with deployments")
-		return ctrl.Result{}, err
+		logger.Error(err, "Encountered an error while trying to instrument deployment")
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *DeploymentReconciler) instrumentDeployment(ctx context.Context, req ctrl.Request, logger logr.Logger, dep appsv1.Deployment) error {
+
+	if shouldSkip(dep.Annotations, dep.Namespace) {
+		logger.V(5).Info("skipped instrumentation for deployment")
+		return nil
+	}
+
+	err := syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, dep.Status.ReadyReplicas, &dep, &dep.Spec.Template, instAppDepOwnerKey)
+	if err != nil {
+		logger.Error(err, "error syncing instrumented apps with deployments")
+		return err
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
