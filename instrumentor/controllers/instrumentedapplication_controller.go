@@ -200,7 +200,6 @@ func (r *InstrumentedApplicationReconciler) isLangDetected(app *v1.InstrumentedA
 }
 
 func (r *InstrumentedApplicationReconciler) isAppDetected(app *v1.InstrumentedApplication) bool {
-	//return app.Spec.DetectedApplication != (common.ApplicationByContainer{})
 	return len(app.Spec.Applications) > 0
 }
 
