@@ -95,10 +95,10 @@ func (in *InstrumentedApplicationSpec) DeepCopyInto(out *InstrumentedApplication
 		copy(*out, *in)
 	}
 
-	if in.DetectedApplication != (common.ApplicationByContainer{}) {
-		in, out := &in.DetectedApplication, &out.DetectedApplication
-		out.ContainerName = in.ContainerName
-		out.Application = in.Application
+	if in.Applications != nil {
+		in, out := &in.Applications, &out.Applications
+		*out = make([]common.ApplicationByContainer, len(*in))
+		copy(*out, *in)
 	}
 
 	if in.Enabled != nil {

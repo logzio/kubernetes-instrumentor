@@ -7,7 +7,6 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	controllerLog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -107,12 +106,9 @@ func calculateAppName(podSpace *v1.PodTemplateSpec, currentContainer *v1.Contain
 }
 
 func getApplicationFromDetectionResult(ctx context.Context, instrumentedApplication *apiV1.InstrumentedApplication) string {
-	logger := controllerLog.FromContext(ctx)
 	var detectedApp = ""
-
-	if instrumentedApplication.Spec.DetectedApplication != (common.ApplicationByContainer{}) {
-		logger.V(5).Info("Added detected app to result", "app", instrumentedApplication.Spec.DetectedApplication.Application)
-		detectedApp = string(instrumentedApplication.Spec.DetectedApplication.Application)
+	if len(instrumentedApplication.Spec.Applications) > 0 {
+		detectedApp = string(instrumentedApplication.Spec.Applications[0].Application)
 	}
 
 	return detectedApp
@@ -156,7 +152,7 @@ func init() {
 }
 
 func addAnnotationPatcher() {
-	for _, app := range common.Applications {
-		annotationPatcherMap[string(app)] = *AnnotationPatcherInst
+	for _, app := range common.ProcessNameToType {
+		annotationPatcherMap[app] = *AnnotationPatcherInst
 	}
 }

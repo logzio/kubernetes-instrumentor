@@ -21,7 +21,7 @@ type Args struct {
 func main() {
 	args := parseArgs()
 	var containerResults []common.LanguageByContainer
-	var detectedAppResults common.ApplicationByContainer
+	var detectedAppResults []common.ApplicationByContainer
 	for _, containerName := range args.ContainerNames {
 		processes, detected_apps, err := process.FindAllInContainer(args.PodUID, containerName)
 		if err != nil {
@@ -32,7 +32,7 @@ func main() {
 		log.Printf("detection result: %s\n", processResults)
 
 		detectedAppName := appDetector.DetectApplication(detected_apps)
-		log.Printf("detection result: %s\n", detectedAppName)
+		log.Printf("detection app result: %s\n", detectedAppName)
 
 		if len(processResults) > 0 {
 			containerResults = append(containerResults, common.LanguageByContainer{
@@ -43,12 +43,14 @@ func main() {
 		}
 
 		// Only one detected app is relevant (the rest is duplicated)
+		log.Println(detectedAppName)
 		if len(detectedAppName) > 0 {
-			detectedAppResults = common.ApplicationByContainer{
+			detectedAppResults = append(detectedAppResults, common.ApplicationByContainer{
 				ContainerName: containerName,
 				Application:   common.Application(detectedAppName[0]),
-			}
+			})
 		}
+
 	}
 
 	detectionResult := common.DetectionResult{
@@ -56,6 +58,7 @@ func main() {
 		ApplicationByContainer: detectedAppResults,
 	}
 
+	log.Println(detectionResult)
 	err := publishDetectionResult(detectionResult)
 	if err != nil {
 		log.Fatalf("could not publish detection result, error: %s\n", err)

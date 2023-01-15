@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/go-logr/logr"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
-	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	"github.com/logzio/kubernetes-instrumentor/instrumentor/patch"
 	v1 "k8s.io/api/core/v1"
@@ -102,14 +101,16 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		logger.Error(err, "Encountered an error while trying to process instrumented apps")
 	}
 
-	if instApp.Spec.DetectedApplication == (common.ApplicationByContainer{}) || instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
-		logger.V(5).Info("No new applications detected or app detection is still in progress")
+	if len(instApp.Spec.Applications) == 0 || instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
+		logger.V(0).Info("No new applications detected or app detection is still in progress", "container", instApp.Name, "detectedapp", instApp.Spec.Applications, "appstatus", instApp.Status.InstrumentationDetection.Phase)
 		return nil
 	}
 
 	if shouldDetectApps(podTemplateSpec, logger) {
 		err = processDetectedApps(ctx, req, c, podTemplateSpec, instApp, logger, object)
-		logger.Error(err, "Encountered an error while trying to process detected apps")
+		if err != nil {
+			logger.Error(err, "Encountered an error while trying to process detected apps")
+		}
 	}
 
 	return err
@@ -149,7 +150,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 }
 
 func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, object client.Object) error {
-	logger.V(5).Info("Starting app detection")
+	logger.V(0).Info("Starting app detection")
 	detected, err := patch.IsDetected(ctx, podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented app status for annotation patching")

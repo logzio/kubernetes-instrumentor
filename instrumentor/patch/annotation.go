@@ -41,7 +41,7 @@ func (d *AnnotationPatcher) Patch(ctx context.Context, detected *v1alpha1.Instru
 				if pod.Annotations == nil {
 					pod.Annotations = make(map[string]string)
 				}
-				pod.Annotations[ApplicationTypeAnnotation] = string(detected.Spec.DetectedApplication.Application)
+				pod.Annotations[ApplicationTypeAnnotation] = string(detected.Spec.Applications[0].Application)
 				_, err := podClient.Update(ctx, &pod, metav1.UpdateOptions{})
 				if err != nil {
 					return err
