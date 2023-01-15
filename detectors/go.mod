@@ -1,4 +1,4 @@
-module github.com/logzio/kubernetes-instrumentor/langDetector
+module github.com/logzio/kubernetes-instrumentor/detectors
 
 go 1.18
 

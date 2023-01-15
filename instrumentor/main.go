@@ -51,18 +51,18 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var langDetectorTag string
-	var langDetectorImage string
-	var deleteLangDetectionPods bool
+	var instrumentationDetectorTag string
+	var instrumentationDetectorImage string
+	var deleteInstrumentationDetectionPods bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&langDetectorTag, "lang-detector-tag", "latest", "container tag to use for lang detection")
-	flag.StringVar(&langDetectorImage, "lang-detector-image", "logzio/lang-detector", "container image to use for lang detection")
-	flag.BoolVar(&deleteLangDetectionPods, "delete-detection-pods", true, "Automatic termination of detection pods")
+	flag.StringVar(&instrumentationDetectorTag, "instrumentation-detector-tag", "latest", "container tag to use for lang detection")
+	flag.StringVar(&instrumentationDetectorImage, "instrumentation-detector-image", "tamirmich/instrumentation-detector", "container image to use for lang detection")
+	flag.BoolVar(&deleteInstrumentationDetectionPods, "delete-detection-pods", true, "Automatic termination of detection pods")
 
 	opts := zap.Options{
 		Development: true,
@@ -86,11 +86,11 @@ func main() {
 	}
 
 	if err = (&controllers.InstrumentedApplicationReconciler{
-		Client:                 mgr.GetClient(),
-		Scheme:                 mgr.GetScheme(),
-		LangDetectorTag:        langDetectorTag,
-		LangDetectorImage:      langDetectorImage,
-		DeleteLangDetectorPods: deleteLangDetectionPods,
+		Client:                            mgr.GetClient(),
+		Scheme:                            mgr.GetScheme(),
+		InstrumentationDetectorTag:        instrumentationDetectorTag,
+		InstrumentationDetectorImage:      instrumentationDetectorImage,
+		DeleteInstrumentationDetectorPods: deleteInstrumentationDetectionPods,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InstrumentedApplication")
 		os.Exit(1)
