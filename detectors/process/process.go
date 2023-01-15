@@ -81,13 +81,11 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, []Detai
 						CmdLine:   cmd,
 					})
 
-					if dname[0] == '1' {
-						detectedApps = append(detectedApps, Details{
-							ProcessID: pid,
-							ExeName:   exeName,
-							CmdLine:   cmd,
-						})
-					}
+					detectedApps = append(detectedApps, Details{
+						ProcessID: pid,
+						ExeName:   exeName,
+						CmdLine:   cmd,
+					})
 				}
 			}
 		}

@@ -96,7 +96,7 @@ func (in *InstrumentedApplicationSpec) DeepCopyInto(out *InstrumentedApplication
 	}
 
 	if in.DetectedApplication != (common.ApplicationByContainer{}) {
-		in, out := &in.DetectedApplication, &in.DetectedApplication
+		in, out := &in.DetectedApplication, &out.DetectedApplication
 		out.ContainerName = in.ContainerName
 		out.Application = in.Application
 	}
