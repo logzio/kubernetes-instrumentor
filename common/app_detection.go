@@ -3,7 +3,6 @@ package common
 type ApplicationByContainer struct {
 	ContainerName string      `json:"containerName"`
 	Application   Application `json:"application"`
-	//ProcessName   string      `json:"processName,omitempty"`
 }
 
 type Application string

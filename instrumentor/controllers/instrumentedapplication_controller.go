@@ -146,19 +146,12 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 	result := containerStatus.State.Terminated.Message
 	var detectionResult common.DetectionResult
 	err := json.Unmarshal([]byte(result), &detectionResult)
-	logger.V(5).Info("Detection result from file: ", "result", detectionResult)
 	if err != nil {
 		logger.Error(err, "error parsing detection result")
 		return err
 	} else {
-		err = r.Get(ctx, namespacedName, &instrumentedApp)
-		if err != nil {
-			logger.Error(err, "error fetching updated InstrumentedApp object")
-			return err
-		}
-
 		instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
-		instrumentedApp.Spec.DetectedApplication = detectionResult.ApplicationByContainer
+		instrumentedApp.Spec.Applications = detectionResult.ApplicationByContainer
 		err = r.Update(ctx, &instrumentedApp)
 		if err != nil {
 			logger.Error(err, "error updating InstrumentedApp object with detection result")
@@ -178,7 +171,6 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 
 func (r *InstrumentedApplicationReconciler) startDetection(ctx context.Context, logger logr.Logger, instrumentedApp v1.InstrumentedApplication) (ctrl.Result, error) {
 	logger.V(0).Info("starting detection process")
-
 	instrumentedApp.Status.InstrumentationDetection.Phase = v1.RunningInstrumentationDetectionPhase
 	err := r.Status().Update(ctx, &instrumentedApp)
 	if err != nil {
@@ -208,7 +200,8 @@ func (r *InstrumentedApplicationReconciler) isLangDetected(app *v1.InstrumentedA
 }
 
 func (r *InstrumentedApplicationReconciler) isAppDetected(app *v1.InstrumentedApplication) bool {
-	return app.Spec.DetectedApplication != (common.ApplicationByContainer{})
+	//return app.Spec.DetectedApplication != (common.ApplicationByContainer{})
+	return len(app.Spec.Applications) > 0
 }
 
 func (r *InstrumentedApplicationReconciler) detectLanguage(ctx context.Context, app *v1.InstrumentedApplication, labels map[string]string) error {

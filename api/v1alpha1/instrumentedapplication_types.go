@@ -23,10 +23,10 @@ import (
 
 // InstrumentedApplicationSpec defines the desired state of InstrumentedApplication
 type InstrumentedApplicationSpec struct {
-	Languages                []common.LanguageByContainer  `json:"languages,omitempty"`
-	DetectedApplication      common.ApplicationByContainer `json:"application,omitempty"`
-	Enabled                  *bool                         `json:"enabled,omitempty"`
-	WaitingForDataCollection bool                          `json:"waitingForDataCollection"`
+	Languages                []common.LanguageByContainer    `json:"languages,omitempty"`
+	Applications             []common.ApplicationByContainer `json:"applications,omitempty"`
+	Enabled                  *bool                           `json:"enabled,omitempty"`
+	WaitingForDataCollection bool                            `json:"waitingForDataCollection"`
 }
 
 // InstrumentedApplicationStatus defines the observed state of InstrumentedApplication

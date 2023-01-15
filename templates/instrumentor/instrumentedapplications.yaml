@@ -38,17 +38,17 @@ spec:
               properties:
                 enabled:
                   type: boolean
-                application:
+                applications:
                   items:
                     properties:
                       containerName:
                         type: string
                       application:
                         type: string
-                    type: object
                     required:
                       - containerName
-                  type: object
+                    type: object
+                  type: array
                 languages:
                   items:
                     properties:
