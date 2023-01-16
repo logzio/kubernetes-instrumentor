@@ -49,7 +49,7 @@ const (
 	ErrorInstrumentationDetectionPhase     InstrumentationPhase = "Error"
 )
 
-// InstrumentedApplication is the Schema for the instrumentedapplications API
+// InstrumentedApplication is the Schema for the instrumented applications API
 type InstrumentedApplication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

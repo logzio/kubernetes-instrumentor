@@ -17,7 +17,7 @@ const (
 	javaOptsEnvVar               = "JAVA_OPTS"
 	javaToolOptionsEnvVar        = "JAVA_TOOL_OPTIONS"
 	javaToolOptionsPattern       = "-javaagent:/agent/opentelemetry-javaagent-all.jar " +
-		"-Dotel.traces.sampler=always_on -Dotel.exporter.otlp.endpoint=http://%s:%d"
+		"-Dotel.traces.sampler=always_on -Dotel.traces.exporter=otlp -Dotel.metrics.exporter=none -Dotel.exporter.otlp.traces.endpoint=http://%s:%d"
 )
 
 var java = &javaPatcher{}
@@ -74,11 +74,15 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 			} else {
 				container.Env[idx].Value = container.Env[idx].Value + " " + fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort)
 			}
-
-			container.Env = append(container.Env, v1.EnvVar{
-				Name:  javaOptsEnvVar,
-				Value: fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort),
-			})
+			idx = getIndexOfEnv(container.Env, javaOptsEnvVar)
+			if idx == -1 {
+				container.Env = append(container.Env, v1.EnvVar{
+					Name:  javaOptsEnvVar,
+					Value: fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort),
+				})
+			} else {
+				container.Env[idx].Value = container.Env[idx].Value + " " + fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort)
+			}
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  otelResourceAttributesEnvVar,

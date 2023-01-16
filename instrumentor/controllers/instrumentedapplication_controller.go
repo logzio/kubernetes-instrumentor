@@ -150,8 +150,15 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 		logger.Error(err, "error parsing detection result")
 		return err
 	} else {
+		err = r.Get(ctx, namespacedName, &instrumentedApp)
+		if err != nil {
+			logger.Error(err, "error fetching instrumented application object")
+			return err
+		}
+		logger.V(0).Info("detection result", "result", detectionResult)
 		instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
 		instrumentedApp.Spec.Applications = detectionResult.ApplicationByContainer
+
 		err = r.Update(ctx, &instrumentedApp)
 		if err != nil {
 			logger.Error(err, "error updating InstrumentedApp object with detection result")

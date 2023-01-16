@@ -98,7 +98,10 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 
 	if shouldInstrument(podTemplateSpec, logger) {
 		err = processInstrumentedApps(ctx, podTemplateSpec, instApp, logger, c, object)
-		logger.Error(err, "Encountered an error while trying to process instrumented apps")
+		if err != nil {
+			logger.Error(err, "Encountered an error while trying to process instrumented apps")
+			return err
+		}
 	}
 
 	if len(instApp.Spec.Applications) == 0 || instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
@@ -178,7 +181,9 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 }
 
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
+
 	annotations := podSpec.GetAnnotations()
+	logger.V(0).Info("Checking if should instrument", "annotations", annotations)
 	if annotations["logz.io/instrument"] != "true" {
 		logger.V(0).Info("skipping instrumentation, `logz.io/instrument` annotation not found or set to `false`")
 		return false
