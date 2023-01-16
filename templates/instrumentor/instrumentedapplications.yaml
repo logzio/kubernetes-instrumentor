@@ -58,7 +58,6 @@ spec:
                         enum:
                           - java
                           - python
-                          - go
                           - dotnet
                           - javascript
                         type: string

@@ -10,7 +10,7 @@ type inspector interface {
 	Inspect(process *process.Details) (common.ProgrammingLanguage, bool)
 }
 
-var inspectorsList = []inspector{inspectors.Java, inspectors.Python, inspectors.DotNet, inspectors.NodeJs, inspectors.Golang}
+var inspectorsList = []inspector{inspectors.Java, inspectors.Python, inspectors.DotNet, inspectors.NodeJs}
 
 // DetectLanguage returns a list of all the detected languages in the process-app list
 // For go applications the process-app path is also returned, in all other languages the value is empty
@@ -22,9 +22,6 @@ func DetectLanguage(processes []process.Details) ([]common.ProgrammingLanguage, 
 			inspectionResult, detected := i.Inspect(&p)
 			if detected {
 				result = append(result, inspectionResult)
-				if inspectionResult == common.GoProgrammingLanguage {
-					processName = p.ExeName
-				}
 				break
 			}
 		}

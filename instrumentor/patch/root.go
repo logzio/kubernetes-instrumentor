@@ -31,7 +31,6 @@ var patcherMap = map[common.ProgrammingLanguage]Patcher{
 	common.PythonProgrammingLanguage:     python,
 	common.DotNetProgrammingLanguage:     dotNet,
 	common.JavascriptProgrammingLanguage: nodeJs,
-	common.GoProgrammingLanguage:         golang,
 }
 
 var annotationPatcherMap = map[string]AnnotationPatcher{}
