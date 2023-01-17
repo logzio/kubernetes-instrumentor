@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	SkipAnnotation = "logzio.io/skip"
+	SkipAnnotation = "logz.io/skip"
 )
 
 func shouldSkip(annotations map[string]string, namespace string) bool {

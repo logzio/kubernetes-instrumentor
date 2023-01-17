@@ -11,8 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const ApplicationTypeAnnotation = "logzio/application_type"
-const SkipAppDetectionAnnotation = "logzio/skip_app_detection"
+const ApplicationTypeAnnotation = "logz.io/application_type"
+const SkipAppDetectionAnnotation = "logz.io/skip_app_detection"
 
 var PodOwnedLabels = []string{
 	"app",
