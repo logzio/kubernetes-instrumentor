@@ -31,7 +31,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 		},
 	})
 	// add detected language annotation
-	podSpec.Annotations[LogzioLanguageAnnotation] = "nodejs"
+	podSpec.Annotations[LogzioLanguageAnnotation] = "javascript"
 
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
 		Name:    "copy-nodejs-agent",
