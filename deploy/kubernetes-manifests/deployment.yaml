@@ -4,20 +4,20 @@ metadata:
   annotations:
     logz.io/skip: "true"
   labels:
-    app: logzio-kubernetes-manifests
-  name: logzio-kubernetes-manifests
+    app: kubernetes-instrumentor
+  name: kubernetes-instrumentor
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: logzio-kubernetes-manifests
+      app: kubernetes-instrumentor
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        app: logzio-kubernetes-manifests
+        app: kubernetes-instrumentor
     spec:
       containers:
       - args:
@@ -35,11 +35,11 @@ spec:
           - --health-probe-bind-address=:8081
           - --metrics-bind-address=127.0.0.1:8080
           - --leader-elect
-          - --instrumentation-detector-tag=v0.0.23-test
+          - --instrumentation-detector-tag=v0.0.24-test
           - --instrumentation-detector-image=logzio/instrumentation-detector
         command:
           - /app
-        image: "logzio/kubernetes-manifests:v0.0.23-test"
+        image: "logzio/instrumentor:v0.0.24-test"
         env:
           - name: CURRENT_NS
             valueFrom:
@@ -61,5 +61,5 @@ spec:
             memory: 64Mi
         securityContext:
           allowPrivilegeEscalation: false
-      serviceAccountName: logzio-kubernetes-manifests
+      serviceAccountName: kubernetes-instrumentor
       terminationGracePeriodSeconds: 10
