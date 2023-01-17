@@ -106,6 +106,39 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	podSpec.Spec.Containers = modifiedContainers
 }
 
+func (p *pythonPatcher) Unpatch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
+	// remove the python volume
+	var newVolumes []v1.Volume
+	for _, volume := range podSpec.Spec.Volumes {
+		if volume.Name != pythonVolumeName {
+			newVolumes = append(newVolumes, volume)
+		}
+	}
+	podSpec.Spec.Volumes = newVolumes
+
+	// remove the python init container
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != pythonInitContainerName {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
+
+	// remove the environment variables from the containers
+	for i, container := range podSpec.Spec.Containers {
+		if shouldPatch(instrumentation, common.PythonProgrammingLanguage, container.Name) {
+			var newEnv []v1.EnvVar
+			for _, env := range container.Env {
+				if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" {
+					newEnv = append(newEnv, env)
+				}
+			}
+			podSpec.Spec.Containers[i].Env = newEnv
+		}
+	}
+}
+
 func (p *pythonPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
 	// TODO: Deep comparison
 	for _, c := range podSpec.Spec.InitContainers {

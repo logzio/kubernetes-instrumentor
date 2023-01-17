@@ -92,6 +92,40 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	podSpec.Spec.Containers = modifiedContainers
 }
 
+func (n *nodeJsPatcher) Unpatch(podSpec *v1.PodTemplateSpec) {
+	// remove the detected language annotation
+	delete(podSpec.Annotations, LogzioLanguageAnnotation)
+
+	// remove the init container that copies the agent
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != "copy-nodejs-agent" {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
+
+	// remove the volume for the agent
+	var newVolumes []v1.Volume
+	for _, volume := range podSpec.Spec.Volumes {
+		if volume.Name != nodeVolumeName {
+			newVolumes = append(newVolumes, volume)
+		}
+	}
+	podSpec.Spec.Volumes = newVolumes
+
+	// remove environment variables from containers
+	for i, container := range podSpec.Spec.Containers {
+		var newEnv []v1.EnvVar
+		for _, envVar := range container.Env {
+			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvServiceName && envVar.Name != nodeEnvNodeOptions {
+				newEnv = append(newEnv, envVar)
+			}
+		}
+		podSpec.Spec.Containers[i].Env = newEnv
+	}
+}
+
 func (n *nodeJsPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
 	// TODO: Deep comparison
 	for _, c := range podSpec.Spec.InitContainers {

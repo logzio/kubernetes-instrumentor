@@ -102,6 +102,43 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 	podSpec.Spec.Containers = modifiedContainers
 }
 
+func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
+	// remove the empty directory volume
+	var newVolumes []v1.Volume
+	for _, volume := range podSpec.Spec.Volumes {
+		if volume.Name != javaVolumeName {
+			newVolumes = append(newVolumes, volume)
+		}
+	}
+	podSpec.Spec.Volumes = newVolumes
+
+	// remove the init container
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != "copy-java-agent" {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
+
+	// remove the environment variables
+	var modifiedContainers []v1.Container
+	for _, container := range podSpec.Spec.Containers {
+		var newEnv []v1.EnvVar
+		for _, env := range container.Env {
+			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != javaToolOptionsEnvVar {
+				newEnv = append(newEnv, env)
+			}
+		}
+		container.Env = newEnv
+		modifiedContainers = append(modifiedContainers, container)
+	}
+	podSpec.Spec.Containers = modifiedContainers
+
+	// remove the annotation
+	delete(podSpec.Annotations, LogzioLanguageAnnotation)
+}
+
 func (j *javaPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
 	// TODO: Deep comparison
 	for _, c := range podSpec.Spec.InitContainers {
