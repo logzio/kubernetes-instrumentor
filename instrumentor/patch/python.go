@@ -30,7 +30,8 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			EmptyDir: &v1.EmptyDirVolumeSource{},
 		},
 	})
-
+	// add detected language annotation
+	podSpec.Annotations[LogzioLanguageAnnotation] = "python"
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
 		Name:    pythonInitContainerName,
 		Image:   pythonAgentName,

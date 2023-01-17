@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	NodeIPEnvName   = "NODE_IP"
-	PodNameEnvVName = "POD_NAME"
-	PodNameEnvValue = "$(POD_NAME)"
+	NodeIPEnvName            = "NODE_IP"
+	PodNameEnvVName          = "POD_NAME"
+	PodNameEnvValue          = "$(POD_NAME)"
+	LogzioLanguageAnnotation = "logz.io/instrumentation-language"
 )
 
 var LogzioMonitoringService = os.Getenv("MONITORING_SERVICE_ENDPOINT")

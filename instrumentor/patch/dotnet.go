@@ -37,7 +37,8 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			EmptyDir: &v1.EmptyDirVolumeSource{},
 		},
 	})
-
+	// add detected language annotation
+	podSpec.Annotations[LogzioLanguageAnnotation] = "dotnet"
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
 		Name:  "copy-dotnet-agent",
 		Image: dotnetAgentName,
