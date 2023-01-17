@@ -6,15 +6,17 @@ import (
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	NodeIPEnvName           = "NODE_IP"
-	PodNameEnvVName         = "POD_NAME"
-	PodNameEnvValue         = "$(POD_NAME)"
-	LogzioMonitoringService = "logzio-monitoring-otel-collector.monitoring.svc.cluster.local"
+	NodeIPEnvName   = "NODE_IP"
+	PodNameEnvVName = "POD_NAME"
+	PodNameEnvValue = "$(POD_NAME)"
 )
+
+var LogzioMonitoringService = os.Getenv("MONITORING_SERVICE_ENDPOINT")
 
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
