@@ -2,7 +2,6 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "build",
-
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "composite": true,

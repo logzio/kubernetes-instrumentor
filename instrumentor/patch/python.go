@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	pythonAgentName         = "edenfed/otel-python-agent:v0.2"
+	pythonAgentName         = "logzio/otel-agent-python:v0.0.1-test"
 	pythonVolumeName        = "agentdir-python"
 	pythonMountPath         = "/otel-auto-instrumentation"
 	envOtelTracesExporter   = "OTEL_TRACES_EXPORTER"
