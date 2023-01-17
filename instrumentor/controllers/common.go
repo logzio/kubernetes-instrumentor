@@ -137,6 +137,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 
 	// If not instrumented - patch deployment
 	if !instrumented {
+		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "error patching deployment / statefulset")
@@ -181,15 +182,18 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 }
 
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
-
 	annotations := podSpec.GetAnnotations()
 	logger.V(0).Info("Checking if should instrument", "annotations", annotations)
-	if annotations["logz.io/instrument"] != "true" {
+	if val, exists := annotations[patch.SkipAppDetectionAnnotation]; exists && val == "true" {
+		logger.V(0).Info("skipping instrumentation, skip annotation was set")
+		return false
+	}
+	if annotations[patch.InstrumentAnnotation] == "true" {
+		return true
+	} else {
 		logger.V(0).Info("skipping instrumentation, `logz.io/instrument` annotation not found or set to `false`")
 		return false
 	}
-	logger.V(0).Info("Instrumenting pod: " + podSpec.GetName())
-	return true
 }
 
 func shouldDetectApps(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
