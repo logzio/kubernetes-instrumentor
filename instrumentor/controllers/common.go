@@ -135,7 +135,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 		}
 	}
 	annotations := podTemplateSpec.GetAnnotations()
-	// If logzio/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
+	// If logz.io/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
 	if instrumented && annotations[patch.InstrumentAnnotation] == "rollback" {
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
