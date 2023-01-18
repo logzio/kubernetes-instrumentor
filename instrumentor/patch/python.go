@@ -106,7 +106,7 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	podSpec.Spec.Containers = modifiedContainers
 }
 
-func (p *pythonPatcher) Unpatch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
+func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the python volume
 	var newVolumes []v1.Volume
 	for _, volume := range podSpec.Spec.Volumes {
@@ -127,15 +127,13 @@ func (p *pythonPatcher) Unpatch(podSpec *v1.PodTemplateSpec, instrumentation *ap
 
 	// remove the environment variables from the containers
 	for i, container := range podSpec.Spec.Containers {
-		if shouldPatch(instrumentation, common.PythonProgrammingLanguage, container.Name) {
-			var newEnv []v1.EnvVar
-			for _, env := range container.Env {
-				if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" {
-					newEnv = append(newEnv, env)
-				}
+		var newEnv []v1.EnvVar
+		for _, env := range container.Env {
+			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" {
+				newEnv = append(newEnv, env)
 			}
-			podSpec.Spec.Containers[i].Env = newEnv
 		}
+		podSpec.Spec.Containers[i].Env = newEnv
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	v1 "k8s.io/api/core/v1"
+	"strings"
 )
 
 const (
@@ -92,7 +93,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	podSpec.Spec.Containers = modifiedContainers
 }
 
-func (n *nodeJsPatcher) Unpatch(podSpec *v1.PodTemplateSpec) {
+func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the detected language annotation
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 
@@ -118,7 +119,10 @@ func (n *nodeJsPatcher) Unpatch(podSpec *v1.PodTemplateSpec) {
 	for i, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, envVar := range container.Env {
-			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvServiceName && envVar.Name != nodeEnvNodeOptions {
+			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvServiceName {
+				if envVar.Name == nodeEnvNodeOptions {
+					envVar.Value = strings.Replace(envVar.Value, fmt.Sprintf("--require /%s/autoinstrumentation.js", nodeMountPath), "", -1)
+				}
 				newEnv = append(newEnv, envVar)
 			}
 		}

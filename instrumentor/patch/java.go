@@ -6,6 +6,7 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	v1 "k8s.io/api/core/v1"
+	"strings"
 )
 
 const (
@@ -127,6 +128,9 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != javaToolOptionsEnvVar {
+				if env.Name == javaOptsEnvVar {
+					env.Value = strings.Replace(env.Value, fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort), "", -1)
+				}
 				newEnv = append(newEnv, env)
 			}
 		}

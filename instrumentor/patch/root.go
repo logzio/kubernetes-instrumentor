@@ -21,6 +21,7 @@ var LogzioMonitoringService = os.Getenv("MONITORING_SERVICE_ENDPOINT")
 
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
+	UnPatch(podSpec *v1.PodTemplateSpec)
 	IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool
 }
 
@@ -48,6 +49,17 @@ func ModifyObject(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrumen
 		p.Patch(original, instrumentation)
 	}
 
+	return nil
+}
+
+func RollbackPatch(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) error {
+	for _, l := range getLangsInResult(instrumentation) {
+		p, exists := patcherMap[l]
+		if !exists {
+			return fmt.Errorf("unable to find patcher for lang %s", l)
+		}
+		p.UnPatch(original)
+	}
 	return nil
 }
 

@@ -134,6 +134,20 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			return err
 		}
 	}
+	annotations := podTemplateSpec.GetAnnotations()
+	// If logzio/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
+	if instrumented && annotations[patch.InstrumentAnnotation] == "rollback" {
+		err = patch.RollbackPatch(podTemplateSpec, &instApp)
+		if err != nil {
+			logger.Error(err, "error unpatching deployment / statefulset")
+			return err
+		}
+		err = c.Update(ctx, object)
+		if err != nil {
+			logger.Error(err, "error updating application")
+			return err
+		}
+	}
 
 	// If not instrumented - patch deployment
 	if !instrumented {
@@ -191,7 +205,7 @@ func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	if annotations[patch.InstrumentAnnotation] == "true" {
 		return true
 	} else {
-		logger.V(0).Info("skipping instrumentation, `logz.io/instrument` annotation not found or set to `false`")
+		logger.V(0).Info("skipping instrumentation, `logz.io/instrument` Is not set to true")
 		return false
 	}
 }
