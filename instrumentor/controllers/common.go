@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/go-logr/logr"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
@@ -103,6 +104,13 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 			return err
 		}
 	}
+	if shouldRollBack(podTemplateSpec, logger) {
+		err = processRollback(ctx, podTemplateSpec, instApp, logger, c, object)
+		if err != nil {
+			logger.Error(err, "Encountered an error while trying to process rollback")
+			return err
+		}
+	}
 
 	if len(instApp.Spec.Applications) == 0 || instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
 		logger.V(0).Info("No new applications detected or app detection is still in progress", "container", instApp.Name, "detectedapp", instApp.Spec.Applications, "appstatus", instApp.Status.InstrumentationDetection.Phase)
@@ -118,8 +126,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 
 	return err
 }
-
-func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented status")
@@ -137,18 +144,37 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 	annotations := podTemplateSpec.GetAnnotations()
 	// If logz.io/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
 	if instrumented && annotations[patch.InstrumentAnnotation] == "rollback" {
+		logger.V(0).Info("rolling back instrumentation for pod" + podTemplateSpec.Name)
+		logger.V(0).Info(fmt.Sprintf("before rollback: %v", podTemplateSpec))
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "error unpatching deployment / statefulset")
 			return err
 		}
+		logger.V(0).Info(fmt.Sprintf("After rollback: %v", podTemplateSpec))
 		err = c.Update(ctx, object)
 		if err != nil {
 			logger.Error(err, "error updating application")
 			return err
 		}
 	}
-
+	return nil
+}
+func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	instrumented, err := patch.IsInstrumented(podTemplateSpec, &instApp)
+	if err != nil {
+		logger.Error(err, "error computing instrumented status")
+		return err
+	}
+	if instrumented != instApp.Status.Instrumented {
+		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
+		instApp.Status.Instrumented = instrumented
+		err = c.Status().Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error computing instrumented status")
+			return err
+		}
+	}
 	// If not instrumented - patch deployment
 	if !instrumented {
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
@@ -195,6 +221,15 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 	return nil
 }
 
+func shouldRollBack(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
+	annotations := podTemplateSpec.GetAnnotations()
+	if annotations[patch.InstrumentAnnotation] == "rollback" {
+		logger.V(0).Info("Rollback annotation detected")
+		return true
+	}
+	return false
+}
+
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	annotations := podSpec.GetAnnotations()
 	logger.V(0).Info("Checking if should instrument", "annotations", annotations)
@@ -202,10 +237,11 @@ func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 		logger.V(0).Info("skipping instrumentation, skip annotation was set")
 		return false
 	}
+	// if logz.io/instrument is set to "true" - instrument the app
 	if annotations[patch.InstrumentAnnotation] == "true" {
 		return true
 	} else {
-		logger.V(0).Info("skipping instrumentation, `logz.io/instrument` Is not set to true")
+		logger.V(0).Info("skipping instrumentation according to `logz.io/instrument` annotation")
 		return false
 	}
 }

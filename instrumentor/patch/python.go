@@ -127,6 +127,13 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 
 	// remove the environment variables from the containers
 	for i, container := range podSpec.Spec.Containers {
+		var newVolumeMounts []v1.VolumeMount
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.Name != pythonVolumeName {
+				newVolumeMounts = append(newVolumeMounts, volumeMount)
+			}
+		}
+		container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" {

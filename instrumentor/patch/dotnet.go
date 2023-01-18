@@ -142,6 +142,13 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the environment variables
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
+		var newVolumeMounts []v1.VolumeMount
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.Name != dotnetVolumeName {
+				newVolumeMounts = append(newVolumeMounts, volumeMount)
+			}
+		}
+		container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv {

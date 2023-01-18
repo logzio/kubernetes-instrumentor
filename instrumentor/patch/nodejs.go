@@ -117,6 +117,13 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 
 	// remove environment variables from containers
 	for i, container := range podSpec.Spec.Containers {
+		var newVolumeMounts []v1.VolumeMount
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.Name != nodeVolumeName {
+				newVolumeMounts = append(newVolumeMounts, volumeMount)
+			}
+		}
+		container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, envVar := range container.Env {
 			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvServiceName {

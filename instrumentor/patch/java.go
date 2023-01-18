@@ -125,6 +125,13 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the environment variables
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
+		var newVolumeMounts []v1.VolumeMount
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.Name != javaVolumeName {
+				newVolumeMounts = append(newVolumeMounts, volumeMount)
+			}
+		}
+		container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != javaToolOptionsEnvVar {
