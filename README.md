@@ -20,6 +20,7 @@ The `logzio-instrumetor` microservice can be deployed to your cluster to discove
 
 ### Configuration for `logzio-instrumentor` container
 To configure the `logzio-instrumentor` container, you can use the following arguments and apply in the deployment manifest (`deploy/kubernetes-manifests/deployment.yaml`):
+#### Arguments
 - `instrumentation-detector-tag`: The container tag to use for language detection, with a default value of `latest`.
 - `instrumentation-detector-image`: The container image to use for language detection, with a default value of `logzio/instrumentation-detector`.
 - `delete-detection-pods`: A flag that enables automatic termination of detection pods, with a default value of `true`.
@@ -27,6 +28,8 @@ To configure the `logzio-instrumentor` container, you can use the following argu
 - `metrics-bind-address`: The address the metrics endpoint binds to, with a default value of `:8080`.
 - `health-probe-bind-address`: The address the health probe endpoint binds to, with a default value of `:8081`.
 - `leader-elect`: A flag that enables leader election for the controller manager, with a default value of false.
+#### Environment variables
+- `MONITORING_SERVICE_ENDPOINT`: The endpoint of the monitoring service (ex: `logzio-monitoring-otel-collector.monitoring.svc.cluster.local`).
 
 ### 
 ### Development
