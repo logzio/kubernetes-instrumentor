@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/go-logr/logr"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
@@ -104,7 +103,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 			return err
 		}
 	}
-	if shouldRollBack(podTemplateSpec, logger) {
+	if shouldRollBack(podTemplateSpec, logger, instApp) {
 		err = processRollback(ctx, podTemplateSpec, instApp, logger, c, object)
 		if err != nil {
 			logger.Error(err, "Encountered an error while trying to process rollback")
@@ -145,18 +144,19 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 	// If logz.io/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
 	if instrumented && annotations[patch.InstrumentAnnotation] == "rollback" {
 		logger.V(0).Info("rolling back instrumentation for pod" + podTemplateSpec.Name)
-		logger.V(0).Info(fmt.Sprintf("before rollback: %v", podTemplateSpec))
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "error unpatching deployment / statefulset")
 			return err
 		}
-		logger.V(0).Info(fmt.Sprintf("After rollback: %v", podTemplateSpec))
+
 		err = c.Update(ctx, object)
 		if err != nil {
 			logger.Error(err, "error updating application")
 			return err
 		}
+		logger.V(0).Info("successfully rolled back instrumentation, changing instrumented app status to not instrumented")
+		instApp.Status.Instrumented = false
 	}
 	return nil
 }
@@ -221,10 +221,10 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 	return nil
 }
 
-func shouldRollBack(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
+func shouldRollBack(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
 	annotations := podTemplateSpec.GetAnnotations()
-	if annotations[patch.InstrumentAnnotation] == "rollback" {
-		logger.V(0).Info("Rollback annotation detected")
+	if annotations[patch.InstrumentAnnotation] == "rollback" && instApp.Status.Instrumented {
+		logger.V(0).Info("rollback annotation detected for instrumented app")
 		return true
 	}
 	return false

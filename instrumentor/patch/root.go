@@ -25,11 +25,6 @@ type Patcher interface {
 	IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool
 }
 
-//type AnnotationPatcher interface {
-//	Patch(ctx context.Context, detected *apiV1.AppDetector, object client.Object) error
-//	shouldPatch(annotations map[string]string, namespace string) bool
-//}
-
 var patcherMap = map[common.ProgrammingLanguage]Patcher{
 	common.JavaProgrammingLanguage:       java,
 	common.PythonProgrammingLanguage:     python,
