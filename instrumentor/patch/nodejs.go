@@ -28,12 +28,13 @@ import (
 )
 
 const (
-	nodeAgentImage       = "logzio/otel-agent-nodejs:v0.0.1-test"
+	nodeAgentImage       = "logzio/otel-agent-nodejs:0.0.6-test"
 	nodeVolumeName       = "agentdir-nodejs"
 	nodeMountPath        = "/agent-nodejs"
 	nodeEnvNodeDebug     = "OTEL_NODEJS_DEBUG"
 	nodeEnvTraceExporter = "OTEL_TRACES_EXPORTER"
-	nodeEnvEndpoint      = "OTEL_EXPORTER_OTLP_ENDPOINT"
+	nodeEnvTraceProtocol = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"
+	nodeEnvEndpoint      = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
 	nodeEnvServiceName   = "OTEL_SERVICE_NAME"
 	nodeEnvNodeOptions   = "NODE_OPTIONS"
 )
@@ -55,7 +56,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
 		Name:    "copy-nodejs-agent",
 		Image:   nodeAgentImage,
-		Command: []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("/%s/", nodeMountPath)},
+		Command: []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("%s/", nodeMountPath)},
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      nodeVolumeName,
@@ -87,6 +88,11 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
+				Name:  nodeEnvTraceProtocol,
+				Value: "grpc",
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
 				Name:  nodeEnvEndpoint,
 				Value: fmt.Sprintf("%s:%d", LogzioMonitoringService, consts.OTLPPort),
 			})
@@ -98,7 +104,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  nodeEnvNodeOptions,
-				Value: fmt.Sprintf("--require /%s/autoinstrumentation.js", nodeMountPath),
+				Value: fmt.Sprintf("--require %s/autoinstrumentation.js", nodeMountPath),
 			})
 
 			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
@@ -144,9 +150,9 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, envVar := range container.Env {
-			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvServiceName {
+			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvTraceProtocol && envVar.Name != nodeEnvServiceName {
 				if envVar.Name == nodeEnvNodeOptions {
-					envVar.Value = strings.Replace(envVar.Value, fmt.Sprintf("--require /%s/autoinstrumentation.js", nodeMountPath), "", -1)
+					envVar.Value = strings.Replace(envVar.Value, fmt.Sprintf("--require %s/autoinstrumentation.js", nodeMountPath), "", -1)
 				}
 				newEnv = append(newEnv, envVar)
 			}
