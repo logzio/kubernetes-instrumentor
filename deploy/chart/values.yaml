@@ -1,0 +1,26 @@
+# Default values for kubernetes-instrumentor.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+name: kubernetes-instrumentor
+namespace: default
+replicas: 1
+manager:
+  instrumentorImage: logzio/instrumentor
+  instrumentorTag: v1.1.0-b
+  instrumentationDetectorImage: logzio/instrumentation-detector
+  instrumentationDetectorTag: v1.1.0-b
+  monitoringServiceEndpoint: "logzio-monitoring-otel-collector.monitoring.svc.cluster.local"
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+terminationGracePeriodSeconds: 30
+serviceAccountName: kubernetes-instrumentor
+
