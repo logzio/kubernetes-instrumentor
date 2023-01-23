@@ -15,14 +15,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASS }}
       - name: Build images release
-        id: Build release
         run: TAG=${{ github.event.release.tag_name }} make build-images
       - name: Push images release
-        id: Push release
         run: TAG=${{ github.event.release.tag_name }} make push-images
       - name: Build images latest
-        id: Build release
         run: TAG=latest make build-images
       - name: Push images latest
-        id: Push release
         run: TAG=latest make push-images
