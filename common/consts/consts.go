@@ -26,9 +26,6 @@ const (
 	DefaultNamespace                               = "monitoring"
 	OTLPPort                                       = 4317
 	OTLPHttpPort                                   = 4318
-	KubeSystemNamespace                            = "kube-system"
-	GateKeeperSystemNamespace                      = "gatekeeper-system"
-	LocalPathStorageNamespace                      = "local-path-storage"
 )
 
 var (
