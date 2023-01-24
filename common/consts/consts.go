@@ -24,10 +24,8 @@ const (
 	InstrumentationDetectionContainerAnnotationKey = "logzio/instrumentation-detection-pod"
 	CurrentNamespaceEnvVar                         = "CURRENT_NS"
 	DefaultNamespace                               = "monitoring"
-	DefaultLogzioConfigurationName                 = "logzio-config"
 	OTLPPort                                       = 4317
 	OTLPHttpPort                                   = 4318
-	DefaultMonitoringNamespace                     = "monitoring"
 	KubeSystemNamespace                            = "kube-system"
 	GateKeeperSystemNamespace                      = "gatekeeper-system"
 	LocalPathStorageNamespace                      = "local-path-storage"
