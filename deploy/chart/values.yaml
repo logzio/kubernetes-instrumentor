@@ -6,11 +6,26 @@ name: kubernetes-instrumentor
 namespace: default
 replicas: 1
 manager:
-  instrumentorImage: logzio/instrumentor
-  instrumentorTag: v1.1.0-b
-  instrumentationDetectorImage: logzio/instrumentation-detector
-  instrumentationDetectorTag: v1.1.0-b
   monitoringServiceEndpoint: "logzio-monitoring-otel-collector.monitoring.svc.cluster.local"
+  instrumentor:
+    image: logzio/instrumentor
+    tag: v1.0.10-b
+  instrumentationDetector:
+    image: logzio/instrumentation-detector
+    tag: v1.0.10-b
+  instrumentationAgents:
+    dotnet:
+      image: logzio/otel-agent-dotnet
+      tag: v0.0.1-test
+    java:
+      image: logzio/otel-agent-java
+      tag: v0.0.1-test
+    nodejs:
+      image: logzio/otel-agent-nodejs
+      tag: 0.0.6-test
+    python:
+      image: logzio/otel-agent-python
+      tag: 0.0.12-test
   livenessProbe:
     initialDelaySeconds: 30
     periodSeconds: 30

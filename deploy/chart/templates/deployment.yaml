@@ -31,10 +31,18 @@ spec:
               name: https
               protocol: TCP
         - name: manager
-          image: {{ .Values.manager.instrumentorImage }}:{{ .Values.manager.instrumentorTag }}
+          image: {{ .Values.manager.instrumentor.image }}:{{ .Values.manager.instrumentor.tag }}
           env:
             - name: MONITORING_SERVICE_ENDPOINT
               value: {{ .Values.manager.monitoringServiceEndpoint }}
+            - name: DOTNET_AGENT_IMAGE
+              value: {{ .Values.manager.instrumentationAgents.dotnet.image }}:{{ .Values.manager.instrumentationAgents.dotnet.tag }}
+            - name: JAVA_AGENT_IMAGE
+              value: {{ .Values.manager.instrumentationAgents.java.image }}:{{ .Values.manager.instrumentationAgents.java.tag }}
+            - name: NODEJS_AGENT_IMAGE
+              value: {{ .Values.manager.instrumentationAgents.nodejs.image }}:{{ .Values.manager.instrumentationAgents.nodejs.tag }}
+            - name: PYTHON_AGENT_IMAGE
+              value: {{ .Values.manager.instrumentationAgents.python.image }}:{{ .Values.manager.instrumentationAgents.python.tag }}
             - name: CURRENT_NS
               valueFrom:
                 fieldRef:
@@ -51,8 +59,8 @@ spec:
             - --health-probe-bind-address=:8081
             - --metrics-bind-address=127.0.0.1:8080
             - --leader-elect
-            - --instrumentation-detector-tag={{ .Values.manager.instrumentationDetectorTag }}
-            - --instrumentation-detector-image={{ .Values.manager.instrumentationDetectorImage }}
+            - --instrumentation-detector-tag={{ .Values.manager.instrumentationDetector.tag }}
+            - --instrumentation-detector-image={{ .Values.manager.instrumentationDetector.image }}
           resources:
             limits:
               cpu: {{ .Values.manager.resources.limits.cpu }}
