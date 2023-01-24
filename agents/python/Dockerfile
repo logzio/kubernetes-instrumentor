@@ -1,13 +1,7 @@
 FROM python:3.10-alpine AS build
 
-WORKDIR /operator-build
-
 ADD requirements.txt .
 
-RUN mkdir workspace && pip install --target workspace -r requirements.txt
+RUN mkdir autoinstrumentation && pip install --target autoinstrumentation -r requirements.txt
 
-FROM busybox
-
-COPY --from=build /operator-build/workspace /autoinstrumentation
-
-RUN chmod -R go+r /autoinstrumentation
+RUN chmod -R 777 /autoinstrumentation

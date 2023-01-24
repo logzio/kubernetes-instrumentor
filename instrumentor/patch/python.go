@@ -88,7 +88,7 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  "OTEL_EXPORTER_OTLP_ENDPOINT",
+				Name:  "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
 				Value: fmt.Sprintf("http://%s:%d", LogzioMonitoringService, consts.OTLPHttpPort),
 			})
 
