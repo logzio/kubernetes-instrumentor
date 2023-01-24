@@ -26,7 +26,6 @@ import (
 )
 
 const (
-	dotnetAgentName       = "/logzio/otel-agent-dotnet:v0.0.1-test"
 	enableProfilingEnvVar = "CORECLR_ENABLE_PROFILING"
 	profilerEndVar        = "CORECLR_PROFILER"
 	profilerId            = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"

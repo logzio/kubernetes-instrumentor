@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	nodeAgentImage       = "logzio/otel-agent-nodejs:0.0.6-test"
 	nodeVolumeName       = "agentdir-nodejs"
 	nodeMountPath        = "/agent-nodejs"
 	nodeEnvNodeDebug     = "OTEL_NODEJS_DEBUG"

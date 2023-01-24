@@ -35,7 +35,13 @@ const (
 	LogzioLanguageAnnotation = "logz.io/instrumentation-language"
 )
 
-var LogzioMonitoringService = os.Getenv("MONITORING_SERVICE_ENDPOINT")
+var (
+	LogzioMonitoringService = os.Getenv("MONITORING_SERVICE_ENDPOINT")
+	dotnetAgentName         = os.Getenv("DOTNET_AGENT_IMAGE")
+	pythonAgentName         = os.Getenv("PYTHON_AGENT_IMAGE")
+	nodeAgentImage          = os.Getenv("NODEJS_AGENT_IMAGE")
+	javaAgentImage          = os.Getenv("JAVA_AGENT_IMAGE")
+)
 
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)

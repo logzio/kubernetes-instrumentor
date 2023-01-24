@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	javaAgentImage               = "logzio/otel-agent-java:v0.0.1-test"
 	javaVolumeName               = "agentdir-java"
 	javaMountPath                = "/agent"
 	otelResourceAttributesEnvVar = "OTEL_RESOURCE_ATTRIBUTES"

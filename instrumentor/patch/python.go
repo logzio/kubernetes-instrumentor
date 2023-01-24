@@ -27,7 +27,6 @@ import (
 )
 
 const (
-	pythonAgentName         = "logzio/otel-agent-python:v0.0.1-test"
 	pythonVolumeName        = "agentdir-python"
 	pythonMountPath         = "/otel-auto-instrumentation"
 	envOtelTracesExporter   = "OTEL_TRACES_EXPORTER"
@@ -82,11 +81,6 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 					},
 				},
 			}, container.Env...)
-
-			container.Env = append(container.Env, v1.EnvVar{
-				Name:  envLogCorrelation,
-				Value: "true",
-			})
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  "PYTHONPATH",
