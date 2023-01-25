@@ -4,4 +4,4 @@ ADD requirements.txt .
 
 RUN mkdir autoinstrumentation && pip install --target autoinstrumentation -r requirements.txt
 
-RUN chmod -R 777 /autoinstrumentation
+RUN chmod -R go+r /autoinstrumentation

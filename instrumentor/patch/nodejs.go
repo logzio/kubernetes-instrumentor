@@ -51,11 +51,18 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "javascript"
-
+	// Add security context
+	securityContext := &v1.SecurityContext{
+		RunAsUser:    podSpec.Spec.SecurityContext.RunAsUser,
+		RunAsGroup:   podSpec.Spec.SecurityContext.RunAsGroup,
+		RunAsNonRoot: podSpec.Spec.SecurityContext.RunAsNonRoot,
+	}
+	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:    "copy-nodejs-agent",
-		Image:   nodeAgentImage,
-		Command: []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("%s/", nodeMountPath)},
+		Name:            "copy-nodejs-agent",
+		Image:           nodeAgentImage,
+		Command:         []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("%s/", nodeMountPath)},
+		SecurityContext: securityContext,
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      nodeVolumeName,

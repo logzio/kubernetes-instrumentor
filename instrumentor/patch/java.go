@@ -51,10 +51,18 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "java"
+	// Add security context
+	securityContext := &v1.SecurityContext{
+		RunAsUser:    podSpec.Spec.SecurityContext.RunAsUser,
+		RunAsGroup:   podSpec.Spec.SecurityContext.RunAsGroup,
+		RunAsNonRoot: podSpec.Spec.SecurityContext.RunAsNonRoot,
+	}
+	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:    "copy-java-agent",
-		Image:   javaAgentImage,
-		Command: []string{"cp", "/javaagent.jar", "/agent/opentelemetry-javaagent-all.jar"},
+		Name:            "copy-java-agent",
+		Image:           javaAgentImage,
+		Command:         []string{"cp", "/javaagent.jar", "/agent/opentelemetry-javaagent-all.jar"},
+		SecurityContext: securityContext,
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      javaVolumeName,

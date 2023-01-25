@@ -56,9 +56,20 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "dotnet"
+	// Add security context
+	runAsNonRoot := false
+	root := int64(0)
+	// Add security context
+	securityContext := &v1.SecurityContext{
+		RunAsNonRoot: &runAsNonRoot,
+		RunAsUser:    &root,
+		RunAsGroup:   &root,
+	}
+	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:  "copy-dotnet-agent",
-		Image: dotnetAgentName,
+		Name:            "copy-dotnet-agent",
+		Image:           dotnetAgentName,
+		SecurityContext: securityContext,
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      dotnetVolumeName,

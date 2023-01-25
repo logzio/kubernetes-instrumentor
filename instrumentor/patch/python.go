@@ -49,10 +49,20 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "python"
+	runAsNonRoot := false
+	root := int64(0)
+	// Add security context
+	securityContext := &v1.SecurityContext{
+		RunAsNonRoot: &runAsNonRoot,
+		RunAsUser:    &root,
+		RunAsGroup:   &root,
+	}
+	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:    pythonInitContainerName,
-		Image:   pythonAgentName,
-		Command: []string{"cp", "-a", "/autoinstrumentation/.", "/otel-auto-instrumentation/"},
+		Name:            pythonInitContainerName,
+		Image:           pythonAgentName,
+		Command:         []string{"cp", "-a", "/autoinstrumentation/.", "/otel-auto-instrumentation/"},
+		SecurityContext: securityContext,
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      pythonVolumeName,
