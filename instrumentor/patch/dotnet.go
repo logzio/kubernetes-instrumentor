@@ -26,21 +26,22 @@ import (
 )
 
 const (
-	enableProfilingEnvVar = "CORECLR_ENABLE_PROFILING"
-	profilerEndVar        = "CORECLR_PROFILER"
-	profilerId            = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"
-	profilerPathEnv       = "CORECLR_PROFILER_PATH"
-	profilerPath          = "/agent/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
-	intergationEnv        = "OTEL_INTEGRATIONS"
-	intergations          = "/agent/integrations.json"
-	conventionsEnv        = "OTEL_CONVENTION"
-	serviceNameEnv        = "OTEL_SERVICE"
-	convetions            = "OpenTelemetry"
-	collectorUrlEnv       = "OTEL_TRACE_AGENT_URL"
-	tracerHomeEnv         = "OTEL_DOTNET_TRACER_HOME"
-	exportTypeEnv         = "OTEL_EXPORTER"
-	tracerHome            = "/agent"
-	dotnetVolumeName      = "agentdir-dotnet"
+	enableProfilingEnvVar   = "CORECLR_ENABLE_PROFILING"
+	profilerEndVar          = "CORECLR_PROFILER"
+	profilerId              = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"
+	profilerPathEnv         = "CORECLR_PROFILER_PATH"
+	profilerPath            = "/agent/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
+	intergationEnv          = "OTEL_INTEGRATIONS"
+	intergations            = "/agent/integrations.json"
+	conventionsEnv          = "OTEL_CONVENTION"
+	serviceNameEnv          = "OTEL_SERVICE"
+	convetions              = "OpenTelemetry"
+	collectorUrlEnv         = "OTEL_TRACE_AGENT_URL"
+	tracerHomeEnv           = "OTEL_DOTNET_TRACER_HOME"
+	exportTypeEnv           = "OTEL_EXPORTER"
+	tracerHome              = "/agent"
+	dotnetVolumeName        = "agentdir-dotnet"
+	dotnetInitContainerName = "copy-dotnet-agent"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -69,7 +70,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	}
 	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            "copy-dotnet-agent",
+		Name:            dotnetInitContainerName,
 		Image:           dotnetAgentName,
 		SecurityContext: securityContext,
 		VolumeMounts: []v1.VolumeMount{
@@ -163,7 +164,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the init container
 	var newInitContainers []v1.Container
 	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != "copy-dotnet-agent" {
+		if container.Name != dotnetInitContainerName {
 			newInitContainers = append(newInitContainers, container)
 		}
 	}
@@ -194,8 +195,18 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 	delete(podSpec.Annotations, annotationInstrumentedApp)
 }
+func (d *dotNetPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
+	// remove the init container
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != dotnetInitContainerName {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
 
-func (d *dotNetPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
+}
+func (d *dotNetPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
 		if key == annotationInstrumentedApp && value == "true" {

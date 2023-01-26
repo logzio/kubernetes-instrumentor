@@ -169,8 +169,18 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		podSpec.Spec.Containers[i].Env = newEnv
 	}
 }
+func (p *pythonPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) bool {
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != pythonInitContainerName {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
+	return true
+}
 
-func (p *pythonPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
+func (p *pythonPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
 		if key == annotationInstrumentedApp && value == "true" {

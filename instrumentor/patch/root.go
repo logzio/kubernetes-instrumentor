@@ -48,7 +48,7 @@ var (
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	UnPatch(podSpec *v1.PodTemplateSpec)
-	IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool
+	IsInstrumented(podSpec *v1.PodTemplateSpec) bool
 }
 
 var patcherMap = map[common.ProgrammingLanguage]Patcher{
@@ -83,6 +83,14 @@ func RollbackPatch(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrume
 	}
 	return nil
 }
+func ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
+	for key, value := range podSpec.Annotations {
+		if key == RemoveInitContainerAnnotaion && value == "true" {
+			return true
+		}
+	}
+	return false
+}
 
 func IsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
 	instrumented := true
@@ -92,7 +100,7 @@ func IsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrum
 			return false, fmt.Errorf("unable to find patcher for lang %s", l)
 		}
 
-		instrumented = instrumented && p.IsInstrumented(original, instrumentation)
+		instrumented = instrumented && p.IsInstrumented(original)
 	}
 
 	return instrumented, nil

@@ -28,14 +28,15 @@ import (
 )
 
 const (
-	nodeVolumeName       = "agentdir-nodejs"
-	nodeMountPath        = "/agent-nodejs"
-	nodeEnvNodeDebug     = "OTEL_NODEJS_DEBUG"
-	nodeEnvTraceExporter = "OTEL_TRACES_EXPORTER"
-	nodeEnvTraceProtocol = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"
-	nodeEnvEndpoint      = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
-	nodeEnvServiceName   = "OTEL_SERVICE_NAME"
-	nodeEnvNodeOptions   = "NODE_OPTIONS"
+	nodeVolumeName        = "agentdir-nodejs"
+	nodeMountPath         = "/agent-nodejs"
+	nodeEnvNodeDebug      = "OTEL_NODEJS_DEBUG"
+	nodeEnvTraceExporter  = "OTEL_TRACES_EXPORTER"
+	nodeEnvTraceProtocol  = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"
+	nodeEnvEndpoint       = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
+	nodeEnvServiceName    = "OTEL_SERVICE_NAME"
+	nodeEnvNodeOptions    = "NODE_OPTIONS"
+	nodeInitContainerName = "copy-nodejs-agent"
 )
 
 var nodeJs = &nodeJsPatcher{}
@@ -62,7 +63,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	}
 	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            "copy-nodejs-agent",
+		Name:            nodeInitContainerName,
 		Image:           nodeAgentImage,
 		Command:         []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("%s/", nodeMountPath)},
 		SecurityContext: securityContext,
@@ -134,7 +135,7 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the init container that copies the agent
 	var newInitContainers []v1.Container
 	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != "copy-nodejs-agent" {
+		if container.Name != nodeInitContainerName {
 			newInitContainers = append(newInitContainers, container)
 		}
 	}
@@ -170,8 +171,17 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		podSpec.Spec.Containers[i].Env = newEnv
 	}
 }
+func (n *nodeJsPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != nodeInitContainerName {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
+}
 
-func (n *nodeJsPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
+func (n *nodeJsPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
 		if key == annotationInstrumentedApp && value == "true" {

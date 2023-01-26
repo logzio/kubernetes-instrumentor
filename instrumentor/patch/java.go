@@ -29,6 +29,7 @@ import (
 
 const (
 	javaVolumeName               = "agentdir-java"
+	javaInitContainerName        = "copy-java-agent"
 	javaMountPath                = "/agent"
 	otelResourceAttributesEnvVar = "OTEL_RESOURCE_ATTRIBUTES"
 	otelResourceAttrPatteern     = "service.name=%s,k8s.pod.name=%s"
@@ -61,7 +62,7 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 	}
 	// Add init container that copies the agent
 	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            "copy-java-agent",
+		Name:            javaInitContainerName,
 		Image:           javaAgentImage,
 		Command:         []string{"cp", "/javaagent.jar", "/agent/opentelemetry-javaagent-all.jar"},
 		SecurityContext: securityContext,
@@ -146,7 +147,7 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the init container
 	var newInitContainers []v1.Container
 	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != "copy-java-agent" {
+		if container.Name != javaInitContainerName {
 			newInitContainers = append(newInitContainers, container)
 		}
 	}
@@ -177,8 +178,17 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	podSpec.Spec.Containers = modifiedContainers
 
 }
+func (j *javaPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
+	var newInitContainers []v1.Container
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name != javaInitContainerName {
+			newInitContainers = append(newInitContainers, container)
+		}
+	}
+	podSpec.Spec.InitContainers = newInitContainers
 
-func (j *javaPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
+}
+func (j *javaPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
 		if key == annotationInstrumentedApp && value == "true" {
