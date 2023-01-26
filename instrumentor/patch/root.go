@@ -29,10 +29,12 @@ import (
 )
 
 const (
-	NodeIPEnvName            = "NODE_IP"
-	PodNameEnvVName          = "POD_NAME"
-	PodNameEnvValue          = "$(POD_NAME)"
-	LogzioLanguageAnnotation = "logz.io/instrumentation-language"
+	NodeIPEnvName                = "NODE_IP"
+	PodNameEnvVName              = "POD_NAME"
+	PodNameEnvValue              = "$(POD_NAME)"
+	LogzioLanguageAnnotation     = "logz.io/instrumentation-language"
+	RemoveInitContainerAnnotaion = "logz.io/remove-init-container"
+	annotationInstrumentedApp    = "logz.io/instrumented-app"
 )
 
 var (

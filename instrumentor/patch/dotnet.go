@@ -54,9 +54,11 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			EmptyDir: &v1.EmptyDirVolumeSource{},
 		},
 	})
-	// add detected language annotation
+	// add annotations
 	podSpec.Annotations[LogzioLanguageAnnotation] = "dotnet"
-	// Add security context
+	podSpec.Annotations[RemoveInitContainerAnnotaion] = "true"
+	podSpec.Annotations[annotationInstrumentedApp] = "true"
+	// Add security context, run as privileged to allow the agent to copy files to the shared container volume
 	runAsNonRoot := false
 	root := int64(0)
 	// Add security context
@@ -188,14 +190,15 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	}
 	podSpec.Spec.Containers = modifiedContainers
 
-	// remove the annotation
+	// remove the annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
+	delete(podSpec.Annotations, annotationInstrumentedApp)
 }
 
 func (d *dotNetPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
-	// TODO: Deep comparison
-	for _, c := range podSpec.Spec.InitContainers {
-		if c.Name == "copy-dotnet-agent" {
+	// check if the pod is already instrumented
+	for key, value := range podSpec.Annotations {
+		if key == annotationInstrumentedApp && value == "true" {
 			return true
 		}
 	}

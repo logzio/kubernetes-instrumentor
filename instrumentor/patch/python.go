@@ -47,11 +47,13 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			EmptyDir: &v1.EmptyDirVolumeSource{},
 		},
 	})
-	// add detected language annotation
+	// add annotations
 	podSpec.Annotations[LogzioLanguageAnnotation] = "python"
+	podSpec.Annotations[RemoveInitContainerAnnotaion] = "true"
+	podSpec.Annotations[annotationInstrumentedApp] = "true"
+	// Add security context, run as privileged to allow the agent to copy files to the shared container volume
 	runAsNonRoot := false
 	root := int64(0)
-	// Add security context
 	securityContext := &v1.SecurityContext{
 		RunAsNonRoot: &runAsNonRoot,
 		RunAsUser:    &root,
@@ -70,7 +72,6 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			},
 		},
 	})
-
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
 		if shouldPatch(instrumentation, common.PythonProgrammingLanguage, container.Name) {
@@ -129,6 +130,9 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 }
 
 func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
+	// remove annotations
+	delete(podSpec.Annotations, LogzioLanguageAnnotation)
+	delete(podSpec.Annotations, annotationInstrumentedApp)
 	// remove the python volume
 	var newVolumes []v1.Volume
 	for _, volume := range podSpec.Spec.Volumes {
@@ -167,9 +171,9 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 }
 
 func (p *pythonPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
-	// TODO: Deep comparison
-	for _, c := range podSpec.Spec.InitContainers {
-		if c.Name == pythonInitContainerName {
+	// check if the pod is already instrumented
+	for key, value := range podSpec.Annotations {
+		if key == annotationInstrumentedApp && value == "true" {
 			return true
 		}
 	}

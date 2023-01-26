@@ -51,6 +51,9 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "javascript"
+	podSpec.Annotations[RemoveInitContainerAnnotaion] = "true"
+	podSpec.Annotations[annotationInstrumentedApp] = "true"
+
 	// Add security context
 	securityContext := &v1.SecurityContext{
 		RunAsUser:    podSpec.Spec.SecurityContext.RunAsUser,
@@ -126,6 +129,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the detected language annotation
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
+	delete(podSpec.Annotations, annotationInstrumentedApp)
 
 	// remove the init container that copies the agent
 	var newInitContainers []v1.Container
@@ -168,9 +172,9 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 }
 
 func (n *nodeJsPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
-	// TODO: Deep comparison
-	for _, c := range podSpec.Spec.InitContainers {
-		if c.Name == "copy-nodejs-agent" {
+	// check if the pod is already instrumented
+	for key, value := range podSpec.Annotations {
+		if key == annotationInstrumentedApp && value == "true" {
 			return true
 		}
 	}

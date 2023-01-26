@@ -51,6 +51,8 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "java"
+	podSpec.Annotations[RemoveInitContainerAnnotaion] = "true"
+	podSpec.Annotations[annotationInstrumentedApp] = "true"
 	// Add security context
 	securityContext := &v1.SecurityContext{
 		RunAsUser:    podSpec.Spec.SecurityContext.RunAsUser,
@@ -129,6 +131,9 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 }
 
 func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
+	// remove the language annotations
+	delete(podSpec.Annotations, LogzioLanguageAnnotation)
+	delete(podSpec.Annotations, annotationInstrumentedApp)
 	// remove the empty directory volume
 	var newVolumes []v1.Volume
 	for _, volume := range podSpec.Spec.Volumes {
@@ -171,14 +176,12 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	}
 	podSpec.Spec.Containers = modifiedContainers
 
-	// remove the annotation
-	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 }
 
 func (j *javaPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
-	// TODO: Deep comparison
-	for _, c := range podSpec.Spec.InitContainers {
-		if c.Name == "copy-java-agent" {
+	// check if the pod is already instrumented
+	for key, value := range podSpec.Annotations {
+		if key == annotationInstrumentedApp && value == "true" {
 			return true
 		}
 	}
