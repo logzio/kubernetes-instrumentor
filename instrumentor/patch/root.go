@@ -35,6 +35,10 @@ const (
 	LogzioLanguageAnnotation     = "logz.io/instrumentation-language"
 	RemoveInitContainerAnnotaion = "logz.io/remove-init-container"
 	annotationInstrumentedApp    = "logz.io/instrumented-app"
+	pythonInitContainerName      = "copy-python-agent"
+	nodeInitContainerName        = "copy-nodejs-agent"
+	javaInitContainerName        = "copy-java-agent"
+	dotnetInitContainerName      = "copy-dotnet-agent"
 )
 
 var (
@@ -49,6 +53,8 @@ type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	UnPatch(podSpec *v1.PodTemplateSpec)
 	IsInstrumented(podSpec *v1.PodTemplateSpec) bool
+	ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, ctx context.Context, object client.Object) bool
+	RemoveInitContainer(podSpec *v1.PodTemplateSpec)
 }
 
 var patcherMap = map[common.ProgrammingLanguage]Patcher{
@@ -83,13 +89,28 @@ func RollbackPatch(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrume
 	}
 	return nil
 }
-func ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) bool {
-	for key, value := range podSpec.Annotations {
-		if key == RemoveInitContainerAnnotaion && value == "true" {
-			return true
+
+func RemoveInitContainer(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) error {
+	for _, l := range getLangsInResult(instrumentation) {
+		p, exists := patcherMap[l]
+		if !exists {
+			return fmt.Errorf("unable to find patcher for lang %s", l)
 		}
+		p.RemoveInitContainer(original)
 	}
-	return false
+	return nil
+}
+
+func ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication, ctx context.Context, object client.Object) (bool, error) {
+	shouldRemove := false
+	for _, l := range getLangsInResult(instrumentation) {
+		p, exists := patcherMap[l]
+		if !exists {
+			return false, fmt.Errorf("unable to find patcher for lang %s", l)
+		}
+		shouldRemove = p.ShouldRemoveInitContainer(podSpec, ctx, object)
+	}
+	return shouldRemove, nil
 }
 
 func IsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {

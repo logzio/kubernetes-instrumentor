@@ -19,17 +19,21 @@ Credits: https://github.com/keyval-dev/odigos
 package patch
 
 import (
+	"context"
 	"fmt"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
 
 const (
 	javaVolumeName               = "agentdir-java"
-	javaInitContainerName        = "copy-java-agent"
 	javaMountPath                = "/agent"
 	otelResourceAttributesEnvVar = "OTEL_RESOURCE_ATTRIBUTES"
 	otelResourceAttrPatteern     = "service.name=%s,k8s.pod.name=%s"
@@ -52,7 +56,6 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "java"
-	podSpec.Annotations[RemoveInitContainerAnnotaion] = "true"
 	podSpec.Annotations[annotationInstrumentedApp] = "true"
 	// Add security context
 	securityContext := &v1.SecurityContext{
@@ -188,6 +191,51 @@ func (j *javaPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
 	podSpec.Spec.InitContainers = newInitContainers
 
 }
+
+func (j *javaPatcher) ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, ctx context.Context, object client.Object) bool {
+	removeAnnotation := false
+	initContainerTerminated := false
+	for key, value := range podSpec.Annotations {
+		if key == RemoveInitContainerAnnotaion && value == "true" {
+			removeAnnotation = true
+		}
+	}
+	//check for the state of the init container
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+	if object.GetNamespace() != "" && object.GetName() != "" {
+		// get the pod
+		pods, err := k8sClient.CoreV1().Pods(object.GetNamespace()).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+		for _, pod := range pods.Items {
+			if strings.Contains(pod.Name, object.GetName()) {
+				// check the state of the init container
+				initContainers := pod.Spec.InitContainers
+				for _, container := range initContainers {
+					if container.Name == javaInitContainerName {
+						for _, containerStatus := range pod.Status.InitContainerStatuses {
+							if containerStatus.Name == container.Name {
+								if containerStatus.State.Terminated != nil {
+									initContainerTerminated = true
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return removeAnnotation && initContainerTerminated
+}
+
 func (j *javaPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
