@@ -31,7 +31,7 @@ spec:
       labels:
         app: emailservice
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
     spec:
       serviceAccountName: default
       terminationGracePeriodSeconds: 5
@@ -89,7 +89,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: checkoutservice
     spec:
@@ -160,7 +160,7 @@ spec:
       labels:
         app: recommendationservice
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
     spec:
       serviceAccountName: default
       terminationGracePeriodSeconds: 5
@@ -220,7 +220,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
         sidecar.istio.io/rewriteAppHTTPProbers: "true"
       labels:
         app: frontend
@@ -329,7 +329,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: paymentservice
     spec:
@@ -389,7 +389,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: productcatalogservice
     spec:
@@ -451,7 +451,7 @@ spec:
       labels:
         app: cartservice
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
     spec:
       serviceAccountName: default
       terminationGracePeriodSeconds: 5
@@ -508,7 +508,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
         sidecar.istio.io/rewriteAppHTTPProbers: "true"
       labels:
         app: loadgenerator
@@ -578,7 +578,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: currencyservice
     spec:
@@ -639,7 +639,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: shippingservice
     spec:
@@ -698,7 +698,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: redis-cart
     spec:
@@ -765,7 +765,7 @@ spec:
   template:
     metadata:
       annotations:
-        logz.io/instrument: "true"
+        logz.io/traces_instrument: "true"
       labels:
         app: adservice
     spec:

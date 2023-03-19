@@ -54,7 +54,7 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add annotations
 	podSpec.Annotations[LogzioLanguageAnnotation] = "python"
-	podSpec.Annotations[annotationInstrumentedApp] = "true"
+	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
 	// Add security context, run as privileged to allow the agent to copy files to the shared container volume
 	runAsNonRoot := false
 	root := int64(0)
@@ -136,7 +136,7 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
-	delete(podSpec.Annotations, annotationInstrumentedApp)
+	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
 	// remove the python volume
 	var newVolumes []v1.Volume
 	for _, volume := range podSpec.Spec.Volumes {
@@ -229,10 +229,18 @@ func (p *pythonPatcher) ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, c
 	return removeAnnotation && initContainerTerminated
 }
 
-func (p *pythonPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
-	// check if the pod is already instrumented
+func (p *pythonPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	for key, value := range podSpec.Annotations {
-		if key == annotationInstrumentedApp && value == "true" {
+		if key == tracesInstrumentedAnnotation && value == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *pythonPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
+	for key, value := range podSpec.Annotations {
+		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

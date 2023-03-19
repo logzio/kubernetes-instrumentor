@@ -77,7 +77,9 @@ spec:
               description: InstrumentedApplicationStatus defines the observed state
                 of InstrumentedApplication
               properties:
-                instrumented:
+                tracesInstrumented:
+                  type: boolean
+                metricsInstrumented:
                   type: boolean
                 appdetected:
                   type: boolean
@@ -92,7 +94,8 @@ spec:
                       type: string
                   type: object
               required:
-                - instrumented
+                - tracesInstrumented
+                - metricsInstrumented
               type: object
           type: object
       served: true

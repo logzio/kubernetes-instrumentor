@@ -56,7 +56,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "javascript"
-	podSpec.Annotations[annotationInstrumentedApp] = "true"
+	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
 
 	// Add security context
 	securityContext := &v1.SecurityContext{
@@ -133,7 +133,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the detected language annotation
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
-	delete(podSpec.Annotations, annotationInstrumentedApp)
+	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
 
 	// remove the init container that copies the agent
 	var newInitContainers []v1.Container
@@ -227,10 +227,20 @@ func (n *nodeJsPatcher) ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, c
 	return removeAnnotation && initContainerTerminated
 }
 
-func (n *nodeJsPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
+func (n *nodeJsPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
-		if key == annotationInstrumentedApp && value == "true" {
+		if key == tracesInstrumentedAnnotation && value == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *nodeJsPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
+	// check if the pod is already instrumented
+	for key, value := range podSpec.Annotations {
+		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

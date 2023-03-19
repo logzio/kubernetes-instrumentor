@@ -56,7 +56,7 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 	})
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "java"
-	podSpec.Annotations[annotationInstrumentedApp] = "true"
+	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
 	// Add security context
 	securityContext := &v1.SecurityContext{
 		RunAsUser:    podSpec.Spec.SecurityContext.RunAsUser,
@@ -137,7 +137,7 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the language annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
-	delete(podSpec.Annotations, annotationInstrumentedApp)
+	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
 	// remove the empty directory volume
 	var newVolumes []v1.Volume
 	for _, volume := range podSpec.Spec.Volumes {
@@ -236,10 +236,20 @@ func (j *javaPatcher) ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, ctx
 	return removeAnnotation && initContainerTerminated
 }
 
-func (j *javaPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
-	// check if the pod is already instrumented
+func (j *javaPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
+	// check if the pod is already traces instrumented
 	for key, value := range podSpec.Annotations {
-		if key == annotationInstrumentedApp && value == "true" {
+		if key == tracesInstrumentedAnnotation && value == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+func (j *javaPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
+	// check if the pod is already metrics instrumented
+	for key, value := range podSpec.Annotations {
+		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

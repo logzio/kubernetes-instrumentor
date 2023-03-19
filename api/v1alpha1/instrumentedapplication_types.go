@@ -34,7 +34,8 @@ type InstrumentedApplicationSpec struct {
 // InstrumentedApplicationStatus defines the observed state of InstrumentedApplication
 type InstrumentedApplicationStatus struct {
 	InstrumentationDetection InstrumentationStatus `json:"instrumentationDetection,omitempty"`
-	Instrumented             bool                  `json:"instrumented"`
+	TracesInstrumented       bool                  `json:"tracesInstrumented"`
+	MetricsInstrumented      bool                  `json:"metricsInstrumented"`
 	AppDetected              bool                  `json:"appDetected"`
 }
 
