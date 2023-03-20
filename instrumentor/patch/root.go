@@ -29,16 +29,17 @@ import (
 )
 
 const (
-	NodeIPEnvName                = "NODE_IP"
-	PodNameEnvVName              = "POD_NAME"
-	PodNameEnvValue              = "$(POD_NAME)"
-	LogzioLanguageAnnotation     = "logz.io/instrumentation-language"
-	RemoveInitContainerAnnotaion = "logz.io/remove-init-container"
-	annotationInstrumentedApp    = "logz.io/instrumented-app"
-	pythonInitContainerName      = "copy-python-agent"
-	nodeInitContainerName        = "copy-nodejs-agent"
-	javaInitContainerName        = "copy-java-agent"
-	dotnetInitContainerName      = "copy-dotnet-agent"
+	NodeIPEnvName                 = "NODE_IP"
+	PodNameEnvVName               = "POD_NAME"
+	PodNameEnvValue               = "$(POD_NAME)"
+	LogzioLanguageAnnotation      = "logz.io/instrumentation-language"
+	RemoveInitContainerAnnotaion  = "logz.io/remove-init-container"
+	tracesInstrumentedAnnotation  = "logz.io/traces-instrumented"
+	metricsInstrumentedAnnotation = "logz.io/metrics-instrumented"
+	pythonInitContainerName       = "copy-python-agent"
+	nodeInitContainerName         = "copy-nodejs-agent"
+	javaInitContainerName         = "copy-java-agent"
+	dotnetInitContainerName       = "copy-dotnet-agent"
 )
 
 var (
@@ -52,7 +53,8 @@ var (
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	UnPatch(podSpec *v1.PodTemplateSpec)
-	IsInstrumented(podSpec *v1.PodTemplateSpec) bool
+	IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool
+	IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool
 	ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, ctx context.Context, object client.Object) bool
 	RemoveInitContainer(podSpec *v1.PodTemplateSpec)
 }
@@ -113,7 +115,7 @@ func ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, instrumentation *api
 	return shouldRemove, nil
 }
 
-func IsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
+func IsTracesInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
 	instrumented := true
 	for _, l := range getLangsInResult(instrumentation) {
 		p, exists := patcherMap[l]
@@ -121,7 +123,21 @@ func IsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrum
 			return false, fmt.Errorf("unable to find patcher for lang %s", l)
 		}
 
-		instrumented = instrumented && p.IsInstrumented(original)
+		instrumented = instrumented && p.IsTracesInstrumented(original)
+	}
+
+	return instrumented, nil
+}
+
+func IsMetricsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
+	instrumented := true
+	for _, l := range getLangsInResult(instrumentation) {
+		p, exists := patcherMap[l]
+		if !exists {
+			return false, fmt.Errorf("unable to find patcher for lang %s", l)
+		}
+
+		instrumented = instrumented && p.IsTracesInstrumented(original)
 	}
 
 	return instrumented, nil

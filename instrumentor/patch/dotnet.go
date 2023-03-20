@@ -54,6 +54,7 @@ var dotNet = &dotNetPatcher{}
 type dotNetPatcher struct{}
 
 func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
+	//podAnnotations := podSpec.GetAnnotations()
 	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
 		Name: dotnetVolumeName,
 		VolumeSource: v1.VolumeSource{
@@ -62,7 +63,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	})
 	// add annotations
 	podSpec.Annotations[LogzioLanguageAnnotation] = "dotnet"
-	podSpec.Annotations[annotationInstrumentedApp] = "true"
+	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
 	// Add security context, run as privileged to allow the agent to copy files to the shared container volume
 	runAsNonRoot := false
 	root := int64(0)
@@ -197,7 +198,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 
 	// remove the annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
-	delete(podSpec.Annotations, annotationInstrumentedApp)
+	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
 }
 func (d *dotNetPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
 	// remove the init container
@@ -256,10 +257,19 @@ func (d *dotNetPatcher) ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, c
 	return removeAnnotation && initContainerTerminated
 }
 
-func (d *dotNetPatcher) IsInstrumented(podSpec *v1.PodTemplateSpec) bool {
+func (d *dotNetPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
-		if key == annotationInstrumentedApp && value == "true" {
+		if key == tracesInstrumentedAnnotation && value == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *dotNetPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
+	for key, value := range podSpec.Annotations {
+		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

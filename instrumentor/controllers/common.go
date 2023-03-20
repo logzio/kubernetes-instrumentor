@@ -121,7 +121,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 			return err
 		}
 	}
-	if shouldRollBack(podTemplateSpec, logger, instApp) {
+	if shouldRollBackTraces(podTemplateSpec, logger, instApp) {
 		err = processRollback(ctx, podTemplateSpec, instApp, logger, c, object)
 		if err != nil {
 			logger.Error(err, "Encountered an error while trying to process rollback")
@@ -161,14 +161,14 @@ func processRemoveInitContainer(ctx context.Context, podTemplateSpec *v1.PodTemp
 }
 
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
-	instrumented, err := patch.IsInstrumented(podTemplateSpec, &instApp)
+	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented status")
 		return err
 	}
-	if instrumented != instApp.Status.Instrumented {
+	if instrumented != instApp.Status.TracesInstrumented {
 		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
-		instApp.Status.Instrumented = instrumented
+		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, &instApp)
 		if err != nil {
 			logger.Error(err, "error computing instrumented status")
@@ -177,7 +177,7 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 	}
 	annotations := podTemplateSpec.GetAnnotations()
 	// If logz.io/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
-	if instrumented && annotations[patch.InstrumentAnnotation] == "rollback" {
+	if instrumented && annotations[patch.TracesInstrumentAnnotation] == "rollback" {
 		logger.V(0).Info("rolling back instrumentation for pod" + podTemplateSpec.Name)
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
@@ -191,26 +191,27 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 			return err
 		}
 		logger.V(0).Info("successfully rolled back instrumentation, changing instrumented app status to not instrumented")
-		instApp.Status.Instrumented = false
+		instApp.Status.TracesInstrumented = false
 	}
 	return nil
 }
 func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
-	instrumented, err := patch.IsInstrumented(podTemplateSpec, &instApp)
+	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented status")
 		return err
 	}
-	if instrumented != instApp.Status.Instrumented {
+	if instrumented != instApp.Status.TracesInstrumented {
 		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
-		instApp.Status.Instrumented = instrumented
+		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, &instApp)
 		if err != nil {
-			logger.Error(err, "error computing instrumented status")
+			logger.Error(err, "error computing traces instrumented status")
 			return err
 		}
 	}
 	// If not instrumented - patch deployment
+	// TODO - check for metrics & traces instrumentation and patch one or both together
 	if !instrumented {
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, &instApp)
@@ -256,10 +257,19 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 	return nil
 }
 
-func shouldRollBack(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
+func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
 	annotations := podTemplateSpec.GetAnnotations()
-	if annotations[patch.InstrumentAnnotation] == "rollback" && instApp.Status.Instrumented {
-		logger.V(0).Info("rollback annotation detected for instrumented app")
+	if annotations[patch.TracesInstrumentAnnotation] == "rollback" && instApp.Status.TracesInstrumented {
+		logger.V(0).Info("rollback annotation detected for traces instrumented app")
+		return true
+	}
+	return false
+}
+
+func shouldRollBackMetrics(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
+	annotations := podTemplateSpec.GetAnnotations()
+	if annotations[patch.MetricsInstrumentAnnotation] == "rollback" && instApp.Status.MetricsInstrumented {
+		logger.V(0).Info("rollback annotation detected for traces instrumented app")
 		return true
 	}
 	return false
@@ -284,7 +294,7 @@ func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 		return false
 	}
 	// if logz.io/instrument is set to "true" - instrument the app
-	if annotations[patch.InstrumentAnnotation] == "true" {
+	if annotations[patch.TracesInstrumentAnnotation] == "true" || annotations[patch.MetricsInstrumentAnnotation] == "true" {
 		return true
 	} else {
 		logger.V(0).Info("skipping instrumentation according to `logz.io/instrument` annotation")
