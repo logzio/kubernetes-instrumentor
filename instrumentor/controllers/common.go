@@ -144,22 +144,6 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	return err
 }
 
-func processRemoveInitContainer(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
-
-	err := patch.RemoveInitContainer(podTemplateSpec, &instApp)
-	if err != nil {
-		logger.Error(err, "error removing init container")
-		return err
-	}
-	err = c.Update(ctx, object)
-	if err != nil {
-		logger.Error(err, "error updating application")
-		return err
-	}
-	logger.V(0).Info("successfully deleted init container")
-	return err
-}
-
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
@@ -273,16 +257,6 @@ func shouldRollBackMetrics(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logg
 		return true
 	}
 	return false
-}
-
-func shouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, ctx context.Context, logger logr.Logger, object client.Object) bool {
-	shouldRemove, err := patch.ShouldRemoveInitContainer(podSpec, &instApp, ctx, object)
-	logger.V(0).Info("Checking if should remove init container", "shouldRemove", shouldRemove)
-	if err != nil {
-		return false
-	}
-	return shouldRemove
-
 }
 
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {

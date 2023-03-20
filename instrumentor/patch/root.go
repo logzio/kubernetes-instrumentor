@@ -33,7 +33,6 @@ const (
 	PodNameEnvVName               = "POD_NAME"
 	PodNameEnvValue               = "$(POD_NAME)"
 	LogzioLanguageAnnotation      = "logz.io/instrumentation-language"
-	RemoveInitContainerAnnotaion  = "logz.io/remove-init-container"
 	tracesInstrumentedAnnotation  = "logz.io/traces-instrumented"
 	metricsInstrumentedAnnotation = "logz.io/metrics-instrumented"
 	pythonInitContainerName       = "copy-python-agent"
@@ -55,7 +54,6 @@ type Patcher interface {
 	UnPatch(podSpec *v1.PodTemplateSpec)
 	IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool
 	IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool
-	ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, ctx context.Context, object client.Object) bool
 	RemoveInitContainer(podSpec *v1.PodTemplateSpec)
 }
 
@@ -101,18 +99,6 @@ func RemoveInitContainer(original *v1.PodTemplateSpec, instrumentation *apiV1.In
 		p.RemoveInitContainer(original)
 	}
 	return nil
-}
-
-func ShouldRemoveInitContainer(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication, ctx context.Context, object client.Object) (bool, error) {
-	shouldRemove := false
-	for _, l := range getLangsInResult(instrumentation) {
-		p, exists := patcherMap[l]
-		if !exists {
-			return false, fmt.Errorf("unable to find patcher for lang %s", l)
-		}
-		shouldRemove = p.ShouldRemoveInitContainer(podSpec, ctx, object)
-	}
-	return shouldRemove, nil
 }
 
 func IsTracesInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
