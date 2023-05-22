@@ -21,6 +21,7 @@ package common
 type ApplicationByContainer struct {
 	ContainerName string      `json:"containerName"`
 	Application   Application `json:"application"`
+	LogType       string      `json:"logType"`
 }
 
 type Application string

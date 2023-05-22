@@ -33,8 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	SkipAnnotation = "logz.io/skip"
+const (
+	SkipAnnotation    = "logz.io/skip"
+	LogTypeAnnotation = "logz.io/application_type"
 )
 
 func shouldSkip(annotations map[string]string, namespace string) bool {
@@ -55,8 +56,12 @@ func shouldSkip(annotations map[string]string, namespace string) bool {
 
 func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Client, scheme *runtime.Scheme,
 	readyReplicas int32, object client.Object, podTemplateSpec *v1.PodTemplateSpec, ownerKey string) error {
-
 	logger := log.FromContext(ctx)
+	err := c.Get(ctx, req.NamespacedName, object)
+	if err != nil {
+		logger.Error(err, "error getting kubernetes objects")
+		return err
+	}
 	instApps, err := getInstrumentedApps(ctx, req, c, ownerKey)
 	if err != nil {
 		logger.Error(err, "error finding InstrumentedApp objects")
@@ -76,6 +81,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 			},
 			Spec: apiV1.InstrumentedApplicationSpec{
 				WaitingForDataCollection: !isDataCollectionReady(ctx, c),
+				LogType:                  "",
 			},
 		}
 
@@ -113,7 +119,10 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	if instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
 		return nil
 	}
-
+	err = processLogType(ctx, req, podTemplateSpec, instApp, logger, c, object)
+	if err != nil {
+		return err
+	}
 	if shouldInstrument(podTemplateSpec, logger) {
 		err = processInstrumentedApps(ctx, podTemplateSpec, instApp, logger, c, object)
 		if err != nil {
@@ -144,6 +153,30 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	return err
 }
 
+func processLogType(ctx context.Context, req *ctrl.Request, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	logger.V(0).Info("checking for log type annotation")
+	annotations := podTemplateSpec.GetAnnotations()
+	if annotations == nil {
+		logger.V(0).Info("No annotations found")
+		return nil
+	}
+	if annotations[LogTypeAnnotation] != "" {
+		logger.V(0).Info("found log type annotation", "logtype", annotations[LogTypeAnnotation])
+		instApp.Spec.LogType = annotations[LogTypeAnnotation]
+	}
+	logger.V(0).Info("before updating InstrumentedApp object with log type", "instapp", &instApp)
+	logger.V(0).Info("before updating InstrumentedApp object with log type", "instapp", instApp)
+
+	err := c.Update(ctx, &instApp)
+	logger.V(0).Info("after updating InstrumentedApp object with log type", "instapp", &instApp)
+	logger.V(0).Info("after updating InstrumentedApp object with log type", "instapp", instApp)
+	if err != nil {
+		logger.Error(err, "error updating InstrumentedApp object with log type")
+		return err
+	}
+	return nil
+}
+
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
@@ -163,12 +196,20 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 	// If logz.io/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
 	if instrumented && annotations[patch.TracesInstrumentAnnotation] == "rollback" {
 		logger.V(0).Info("rolling back instrumentation for pod" + podTemplateSpec.Name)
+		logger.V(0).Info("podSpec before patching: "+podTemplateSpec.Name, "podSpec", podTemplateSpec)
+		logger.V(0).Info("object before patching: "+object.GetName(), "object", object)
+		err := c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
+		if err != nil {
+			logger.Error(err, "error getting object")
+			return err
+		}
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "error unpatching deployment / statefulset")
 			return err
 		}
-
+		logger.V(0).Info("podSpec after patching: "+podTemplateSpec.Name, "podSpec", podTemplateSpec)
+		logger.V(0).Info("object after patching: "+object.GetName(), "object", object)
 		err = c.Update(ctx, object)
 		if err != nil {
 			logger.Error(err, "error updating application")
@@ -195,7 +236,6 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 		}
 	}
 	// If not instrumented - patch deployment
-	// TODO - check for metrics & traces instrumentation and patch one or both together
 	if !instrumented {
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, &instApp)
@@ -203,7 +243,6 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			logger.Error(err, "error patching deployment / statefulset")
 			return err
 		}
-
 		err = c.Update(ctx, object)
 		if err != nil {
 			logger.Error(err, "error instrumenting application")
@@ -244,15 +283,6 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
 	annotations := podTemplateSpec.GetAnnotations()
 	if annotations[patch.TracesInstrumentAnnotation] == "rollback" && instApp.Status.TracesInstrumented {
-		logger.V(0).Info("rollback annotation detected for traces instrumented app")
-		return true
-	}
-	return false
-}
-
-func shouldRollBackMetrics(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
-	annotations := podTemplateSpec.GetAnnotations()
-	if annotations[patch.MetricsInstrumentAnnotation] == "rollback" && instApp.Status.MetricsInstrumented {
 		logger.V(0).Info("rollback annotation detected for traces instrumented app")
 		return true
 	}

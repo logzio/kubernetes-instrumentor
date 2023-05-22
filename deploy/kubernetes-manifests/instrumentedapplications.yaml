@@ -36,6 +36,8 @@ spec:
               description: InstrumentedApplicationSpec defines the desired state of
                 InstrumentedApplication
               properties:
+                logType:
+                  type: string
                 enabled:
                   type: boolean
                 applications:

@@ -16,8 +16,6 @@ The following will be deployed:
 The `logzio-instrumetor` microservice can be deployed to your cluster to discover applications, inject opentelemetry instrumentation, add log types and more. You can control the discovery process with annotations.
 - `logz.io/traces_instrument = true` - will instrument the application with opentelemetry
 - `logz.io/traces_instrument = rollback` - will delete the opentelemetry instrumentation
-- `logz.io/metrics_instrument = true` - will expose application metrics
-- `logz.io/metrics_instrument = rollback` - will delete the metrics instrumentation
 - `logz.io/skip = true` - will skip the application from instrumentation or app detection
 
 ### Configuration for `logzio-instrumentor` container
@@ -45,4 +43,3 @@ Deploy Images:
 export TAG=<your-tag>>
 make push-images
 ```
-

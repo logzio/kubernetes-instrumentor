@@ -28,6 +28,7 @@ type InstrumentedApplicationSpec struct {
 	Languages                []common.LanguageByContainer    `json:"languages,omitempty"`
 	Applications             []common.ApplicationByContainer `json:"applications,omitempty"`
 	Enabled                  *bool                           `json:"enabled,omitempty"`
+	LogType                  string                          `json:"logType"`
 	WaitingForDataCollection bool                            `json:"waitingForDataCollection"`
 }
 
