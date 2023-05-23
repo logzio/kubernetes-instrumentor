@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"github.com/fntlnz/mountinfo"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -84,7 +83,7 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, []Detai
 						exeName = ""
 					}
 
-					cmdLine, err := ioutil.ReadFile(path.Join("/proc", dname, "cmdline"))
+					cmdLine, err := os.ReadFile(path.Join("/proc", dname, "cmdline"))
 					var cmd string
 					if err != nil {
 						log.Println("Error reading cmdline")

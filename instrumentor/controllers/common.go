@@ -119,10 +119,12 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	if instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
 		return nil
 	}
+	// detect log type
 	err = processLogType(ctx, req, podTemplateSpec, instApp, logger, c, object)
 	if err != nil {
 		return err
 	}
+	// instrumentation detection process
 	if shouldInstrument(podTemplateSpec, logger) {
 		err = processInstrumentedApps(ctx, podTemplateSpec, instApp, logger, c, object)
 		if err != nil {
@@ -164,12 +166,7 @@ func processLogType(ctx context.Context, req *ctrl.Request, podTemplateSpec *v1.
 		logger.V(0).Info("found log type annotation", "logtype", annotations[LogTypeAnnotation])
 		instApp.Spec.LogType = annotations[LogTypeAnnotation]
 	}
-	logger.V(0).Info("before updating InstrumentedApp object with log type", "instapp", &instApp)
-	logger.V(0).Info("before updating InstrumentedApp object with log type", "instapp", instApp)
-
 	err := c.Update(ctx, &instApp)
-	logger.V(0).Info("after updating InstrumentedApp object with log type", "instapp", &instApp)
-	logger.V(0).Info("after updating InstrumentedApp object with log type", "instapp", instApp)
 	if err != nil {
 		logger.Error(err, "error updating InstrumentedApp object with log type")
 		return err

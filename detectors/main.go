@@ -26,8 +26,8 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/detectors/langDetector"
 	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 	"io/fs"
-	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -101,5 +101,5 @@ func publishDetectionResult(result common.DetectionResult) error {
 		return err
 	}
 
-	return ioutil.WriteFile("/dev/detection-result", data, fs.ModePerm)
+	return os.WriteFile("/dev/detection-result", data, fs.ModePerm)
 }

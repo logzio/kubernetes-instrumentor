@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/detectors/process"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -36,7 +36,7 @@ const (
 var DotNet = &dotnetInspector{}
 
 func (d *dotnetInspector) Inspect(p *process.Details) (common.ProgrammingLanguage, bool) {
-	data, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/environ", p.ProcessID))
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/environ", p.ProcessID))
 	if err == nil {
 		environ := string(data)
 		if strings.Contains(environ, aspnet) || strings.Contains(environ, dotnet) {
