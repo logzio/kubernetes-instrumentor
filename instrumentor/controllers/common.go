@@ -267,13 +267,6 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 		}
 	}
 
-	if detected {
-		err = patch.ModifyObjectWithAnnotation(ctx, &instApp, object)
-		if err != nil {
-			logger.Error(err, "error patching deployment / statefulset with annotation")
-			return err
-		}
-	}
 	return nil
 }
 
@@ -289,13 +282,12 @@ func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logge
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	annotations := podSpec.GetAnnotations()
 	logger.V(0).Info("Checking if should instrument", "pod spec", podSpec, "pod name", podSpec.GetName())
-	logger.V(0).Info("Checking if should instrument", "annotations", annotations)
 	if val, exists := annotations[patch.SkipAppDetectionAnnotation]; exists && val == "true" {
 		logger.V(0).Info("skipping instrumentation, skip annotation was set")
 		return false
 	}
 	// if logz.io/instrument is set to "true" - instrument the app
-	if annotations[patch.TracesInstrumentAnnotation] == "true" || annotations[patch.MetricsInstrumentAnnotation] == "true" {
+	if annotations[patch.TracesInstrumentAnnotation] == "true" {
 		return true
 	} else {
 		logger.V(0).Info("skipping instrumentation according to `logz.io/instrument` annotation")

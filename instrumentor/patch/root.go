@@ -90,32 +90,7 @@ func RollbackPatch(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrume
 	return nil
 }
 
-func RemoveInitContainer(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) error {
-	for _, l := range getLangsInResult(instrumentation) {
-		p, exists := patcherMap[l]
-		if !exists {
-			return fmt.Errorf("unable to find patcher for lang %s", l)
-		}
-		p.RemoveInitContainer(original)
-	}
-	return nil
-}
-
 func IsTracesInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
-	instrumented := true
-	for _, l := range getLangsInResult(instrumentation) {
-		p, exists := patcherMap[l]
-		if !exists {
-			return false, fmt.Errorf("unable to find patcher for lang %s", l)
-		}
-
-		instrumented = instrumented && p.IsTracesInstrumented(original)
-	}
-
-	return instrumented, nil
-}
-
-func IsMetricsInstrumented(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) (bool, error) {
 	instrumented := true
 	for _, l := range getLangsInResult(instrumentation) {
 		p, exists := patcherMap[l]
@@ -171,7 +146,7 @@ func calculateAppName(podSpace *v1.PodTemplateSpec, currentContainer *v1.Contain
 	return instrumentation.ObjectMeta.OwnerReferences[0].Name
 }
 
-func getApplicationFromDetectionResult(ctx context.Context, instrumentedApplication *apiV1.InstrumentedApplication) string {
+func getApplicationFromDetectionResult(instrumentedApplication *apiV1.InstrumentedApplication) string {
 	var detectedApp = ""
 	if len(instrumentedApplication.Spec.Applications) > 0 {
 		detectedApp = string(instrumentedApplication.Spec.Applications[0].Application)
@@ -182,7 +157,7 @@ func getApplicationFromDetectionResult(ctx context.Context, instrumentedApplicat
 
 func IsDetected(ctx context.Context, original *v1.PodTemplateSpec, instrumentedApp *apiV1.InstrumentedApplication) (bool, error) {
 	isDetected := true
-	app := getApplicationFromDetectionResult(ctx, instrumentedApp)
+	app := getApplicationFromDetectionResult(instrumentedApp)
 	if app != "" {
 		p, exists := annotationPatcherMap[app]
 		if !exists {
@@ -196,7 +171,7 @@ func IsDetected(ctx context.Context, original *v1.PodTemplateSpec, instrumentedA
 }
 
 func ModifyObjectWithAnnotation(ctx context.Context, detectedApplication *apiV1.InstrumentedApplication, object client.Object) error {
-	app := getApplicationFromDetectionResult(ctx, detectedApplication)
+	app := getApplicationFromDetectionResult(detectedApplication)
 	if app != "" {
 		p, exists := annotationPatcherMap[app]
 		if !exists {

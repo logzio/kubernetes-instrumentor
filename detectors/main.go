@@ -41,7 +41,7 @@ func main() {
 	var containerResults []common.LanguageByContainer
 	var detectedAppResults []common.ApplicationByContainer
 	for _, containerName := range args.ContainerNames {
-		processes, detected_apps, err := process.FindAllInContainer(args.PodUID, containerName)
+		processes, detectedApps, err := process.FindAllInContainer(args.PodUID, containerName)
 		if err != nil {
 			log.Fatalf("could not find processes, error: %s\n", err)
 		}
@@ -49,7 +49,7 @@ func main() {
 		processResults, processName := langDetector.DetectLanguage(processes)
 		log.Printf("detection result: %s\n", processResults)
 
-		detectedAppName := appDetector.DetectApplication(detected_apps)
+		detectedAppName := appDetector.DetectApplication(detectedApps)
 		log.Printf("detection app result: %s\n", detectedAppName)
 
 		if len(processResults) > 0 {
