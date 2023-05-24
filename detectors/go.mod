@@ -1,6 +1,6 @@
 module github.com/logzio/kubernetes-instrumentor/detectors
 
-go 1.18
+go 1.20
 
 require (
 	github.com/fntlnz/mountinfo v0.0.0-20171106231217-40cb42681fad

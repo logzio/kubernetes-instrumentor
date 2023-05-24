@@ -172,13 +172,13 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the environment variables
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
-		var newVolumeMounts []v1.VolumeMount
-		for _, volumeMount := range container.VolumeMounts {
-			if volumeMount.Name != dotnetVolumeName {
-				newVolumeMounts = append(newVolumeMounts, volumeMount)
-			}
-		}
-		container.VolumeMounts = newVolumeMounts
+		//var newVolumeMounts []v1.VolumeMount
+		//for _, volumeMount := range container.VolumeMounts {
+		//	if volumeMount.Name != dotnetVolumeName {
+		//		newVolumeMounts = append(newVolumeMounts, volumeMount)
+		//	}
+		//}
+		//container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv {
@@ -194,31 +194,11 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
 }
-func (d *dotNetPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
-	// remove the init container
-	var newInitContainers []v1.Container
-	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != dotnetInitContainerName {
-			newInitContainers = append(newInitContainers, container)
-		}
-	}
-	podSpec.Spec.InitContainers = newInitContainers
-
-}
 
 func (d *dotNetPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
 		if key == tracesInstrumentedAnnotation && value == "true" {
-			return true
-		}
-	}
-	return false
-}
-
-func (d *dotNetPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
-	for key, value := range podSpec.Annotations {
-		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}
