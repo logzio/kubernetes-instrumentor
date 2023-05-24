@@ -169,30 +169,11 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		podSpec.Spec.Containers[i].Env = newEnv
 	}
 }
-func (n *nodeJsPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
-	var newInitContainers []v1.Container
-	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != nodeInitContainerName {
-			newInitContainers = append(newInitContainers, container)
-		}
-	}
-	podSpec.Spec.InitContainers = newInitContainers
-}
 
 func (n *nodeJsPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
 		if key == tracesInstrumentedAnnotation && value == "true" {
-			return true
-		}
-	}
-	return false
-}
-
-func (n *nodeJsPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
-	// check if the pod is already instrumented
-	for key, value := range podSpec.Annotations {
-		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

@@ -53,8 +53,6 @@ type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	UnPatch(podSpec *v1.PodTemplateSpec)
 	IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool
-	IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool
-	RemoveInitContainer(podSpec *v1.PodTemplateSpec)
 }
 
 var patcherMap = map[common.ProgrammingLanguage]Patcher{

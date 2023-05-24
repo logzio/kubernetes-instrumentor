@@ -151,13 +151,13 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 
 	// remove the environment variables from the containers
 	for i, container := range podSpec.Spec.Containers {
-		var newVolumeMounts []v1.VolumeMount
-		for _, volumeMount := range container.VolumeMounts {
-			if volumeMount.Name != pythonVolumeName {
-				newVolumeMounts = append(newVolumeMounts, volumeMount)
-			}
-		}
-		container.VolumeMounts = newVolumeMounts
+		//var newVolumeMounts []v1.VolumeMount
+		//for _, volumeMount := range container.VolumeMounts {
+		//	if volumeMount.Name != pythonVolumeName {
+		//		newVolumeMounts = append(newVolumeMounts, volumeMount)
+		//	}
+		//}
+		//container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter && env.Name != envOtelMetricsExporter {
@@ -167,28 +167,10 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		podSpec.Spec.Containers[i].Env = newEnv
 	}
 }
-func (p *pythonPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
-	var newInitContainers []v1.Container
-	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != pythonInitContainerName {
-			newInitContainers = append(newInitContainers, container)
-		}
-	}
-	podSpec.Spec.InitContainers = newInitContainers
-}
 
 func (p *pythonPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	for key, value := range podSpec.Annotations {
 		if key == tracesInstrumentedAnnotation && value == "true" {
-			return true
-		}
-	}
-	return false
-}
-
-func (p *pythonPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
-	for key, value := range podSpec.Annotations {
-		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

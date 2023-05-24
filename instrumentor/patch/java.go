@@ -154,13 +154,13 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the environment variables
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
-		var newVolumeMounts []v1.VolumeMount
-		for _, volumeMount := range container.VolumeMounts {
-			if volumeMount.Name != javaVolumeName {
-				newVolumeMounts = append(newVolumeMounts, volumeMount)
-			}
-		}
-		container.VolumeMounts = newVolumeMounts
+		//var newVolumeMounts []v1.VolumeMount
+		//for _, volumeMount := range container.VolumeMounts {
+		//	if volumeMount.Name != javaVolumeName {
+		//		newVolumeMounts = append(newVolumeMounts, volumeMount)
+		//	}
+		//}
+		//container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != javaToolOptionsEnvVar && env.Name != otelResourceAttributesEnvVar {
@@ -176,31 +176,11 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	podSpec.Spec.Containers = modifiedContainers
 
 }
-func (j *javaPatcher) RemoveInitContainer(podSpec *v1.PodTemplateSpec) {
-	var newInitContainers []v1.Container
-	for _, container := range podSpec.Spec.InitContainers {
-		if container.Name != javaInitContainerName {
-			newInitContainers = append(newInitContainers, container)
-		}
-	}
-	podSpec.Spec.InitContainers = newInitContainers
-
-}
 
 func (j *javaPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already traces instrumented
 	for key, value := range podSpec.Annotations {
 		if key == tracesInstrumentedAnnotation && value == "true" {
-			return true
-		}
-	}
-	return false
-}
-
-func (j *javaPatcher) IsMetricsInstrumented(podSpec *v1.PodTemplateSpec) bool {
-	// check if the pod is already metrics instrumented
-	for key, value := range podSpec.Annotations {
-		if key == metricsInstrumentedAnnotation && value == "true" {
 			return true
 		}
 	}

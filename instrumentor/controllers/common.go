@@ -194,26 +194,30 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 	if instrumented && annotations[patch.TracesInstrumentAnnotation] == "rollback" {
 		logger.V(0).Info("rolling back instrumentation for pod" + podTemplateSpec.Name)
 		logger.V(0).Info("podSpec before patching: "+podTemplateSpec.Name, "podSpec", podTemplateSpec)
-		logger.V(0).Info("object before patching: "+object.GetName(), "object", object)
-		err := c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
-		if err != nil {
-			logger.Error(err, "error getting object")
-			return err
-		}
-		err = patch.RollbackPatch(podTemplateSpec, &instApp)
-		if err != nil {
-			logger.Error(err, "error unpatching deployment / statefulset")
-			return err
+		//err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
+		//if err != nil {
+		//	logger.Error(err, "error getting object")
+		//	return err
+		//}
+		patchErr := patch.RollbackPatch(podTemplateSpec, &instApp)
+		if patchErr != nil {
+			logger.Error(patchErr, "error unpatching deployment / statefulset")
+			return patchErr
 		}
 		logger.V(0).Info("podSpec after patching: "+podTemplateSpec.Name, "podSpec", podTemplateSpec)
 		logger.V(0).Info("object after patching: "+object.GetName(), "object", object)
-		err = c.Update(ctx, object)
-		if err != nil {
-			logger.Error(err, "error updating application")
-			return err
+		updateErr := c.Update(ctx, object)
+		if updateErr != nil {
+			logger.Error(updateErr, "error updating application")
+			return updateErr
 		}
 		logger.V(0).Info("successfully rolled back instrumentation, changing instrumented app status to not instrumented")
 		instApp.Status.TracesInstrumented = false
+		err = c.Status().Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating InstrumentedApp status")
+			return err
+		}
 	}
 	return nil
 }
