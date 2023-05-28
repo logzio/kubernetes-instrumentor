@@ -40,12 +40,25 @@ var python = &pythonPatcher{}
 type pythonPatcher struct{}
 
 func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
-	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
-		Name: pythonVolumeName,
-		VolumeSource: v1.VolumeSource{
-			EmptyDir: &v1.EmptyDirVolumeSource{},
-		},
-	})
+	// Check if volume already exists
+	volumeExists := false
+	for _, vol := range podSpec.Spec.Volumes {
+		if vol.Name == pythonVolumeName {
+			volumeExists = true
+			break
+		}
+	}
+
+	// If not, add volume
+	if !volumeExists {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
+			Name: pythonVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
 	// add annotations
 	podSpec.Annotations[LogzioLanguageAnnotation] = "python"
 	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
@@ -57,19 +70,32 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 		RunAsUser:    &root,
 		RunAsGroup:   &root,
 	}
-	// Add init container that copies the agent
-	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            pythonInitContainerName,
-		Image:           pythonAgentName,
-		Command:         []string{"cp", "-a", "/autoinstrumentation/.", "/otel-auto-instrumentation/"},
-		SecurityContext: securityContext,
-		VolumeMounts: []v1.VolumeMount{
-			{
-				Name:      pythonVolumeName,
-				MountPath: pythonMountPath,
+
+	// Check if init container already exists
+	initContainerExists := false
+	for _, initContainer := range podSpec.Spec.InitContainers {
+		if initContainer.Name == pythonInitContainerName {
+			initContainerExists = true
+			break
+		}
+	}
+
+	// If not, add init container
+	if !initContainerExists {
+		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
+			Name:            pythonInitContainerName,
+			Image:           pythonAgentName,
+			Command:         []string{"cp", "-a", "/autoinstrumentation/.", "/otel-auto-instrumentation/"},
+			SecurityContext: securityContext,
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      pythonVolumeName,
+					MountPath: pythonMountPath,
+				},
 			},
-		},
-	})
+		})
+	}
+
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
 		if shouldPatch(instrumentation, common.PythonProgrammingLanguage, container.Name) {
@@ -116,10 +142,22 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: "",
 			})
 
-			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-				MountPath: pythonMountPath,
-				Name:      pythonVolumeName,
-			})
+			// Check if volume mount already exists
+			volumeMountExists := false
+			for _, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == pythonVolumeName {
+					volumeMountExists = true
+					break
+				}
+			}
+
+			// If not, add volume mount
+			if !volumeMountExists {
+				container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+					MountPath: pythonMountPath,
+					Name:      pythonVolumeName,
+				})
+			}
 		}
 		modifiedContainers = append(modifiedContainers, container)
 	}
@@ -127,19 +165,10 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 	podSpec.Spec.Containers = modifiedContainers
 }
 
-func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
+func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	// remove annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
-	// remove the python volume
-	var newVolumes []v1.Volume
-	for _, volume := range podSpec.Spec.Volumes {
-		if volume.Name != pythonVolumeName {
-			newVolumes = append(newVolumes, volume)
-		}
-	}
-	podSpec.Spec.Volumes = newVolumes
-
 	// remove the python init container
 	var newInitContainers []v1.Container
 	for _, container := range podSpec.Spec.InitContainers {
@@ -151,13 +180,6 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 
 	// remove the environment variables from the containers
 	for i, container := range podSpec.Spec.Containers {
-		//var newVolumeMounts []v1.VolumeMount
-		//for _, volumeMount := range container.VolumeMounts {
-		//	if volumeMount.Name != pythonVolumeName {
-		//		newVolumeMounts = append(newVolumeMounts, volumeMount)
-		//	}
-		//}
-		//container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter && env.Name != envOtelMetricsExporter {
@@ -166,6 +188,7 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		}
 		podSpec.Spec.Containers[i].Env = newEnv
 	}
+	return nil
 }
 
 func (p *pythonPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {

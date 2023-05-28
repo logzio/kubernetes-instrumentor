@@ -48,37 +48,61 @@ var dotNet = &dotNetPatcher{}
 type dotNetPatcher struct{}
 
 func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
-	//podAnnotations := podSpec.GetAnnotations()
-	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
-		Name: dotnetVolumeName,
-		VolumeSource: v1.VolumeSource{
-			EmptyDir: &v1.EmptyDirVolumeSource{},
-		},
-	})
+	// Check if volume already exists
+	volumeExists := false
+	for _, vol := range podSpec.Spec.Volumes {
+		if vol.Name == dotnetVolumeName {
+			volumeExists = true
+			break
+		}
+	}
+
+	// If not, add volume
+	if !volumeExists {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
+			Name: dotnetVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
 	// add annotations
 	podSpec.Annotations[LogzioLanguageAnnotation] = "dotnet"
 	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
+
 	// Add security context, run as privileged to allow the agent to copy files to the shared container volume
 	runAsNonRoot := false
 	root := int64(0)
-	// Add security context
 	securityContext := &v1.SecurityContext{
 		RunAsNonRoot: &runAsNonRoot,
 		RunAsUser:    &root,
 		RunAsGroup:   &root,
 	}
-	// Add init container that copies the agent
-	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            dotnetInitContainerName,
-		Image:           dotnetAgentName,
-		SecurityContext: securityContext,
-		VolumeMounts: []v1.VolumeMount{
-			{
-				Name:      dotnetVolumeName,
-				MountPath: tracerHome,
+
+	// Check if init container already exists
+	initContainerExists := false
+	for _, initContainer := range podSpec.Spec.InitContainers {
+		if initContainer.Name == dotnetInitContainerName {
+			initContainerExists = true
+			break
+		}
+	}
+
+	// If not, add init container
+	if !initContainerExists {
+		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
+			Name:            dotnetInitContainerName,
+			Image:           dotnetAgentName,
+			SecurityContext: securityContext,
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      dotnetVolumeName,
+					MountPath: tracerHome,
+				},
 			},
-		},
-	})
+		})
+	}
 
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
@@ -138,28 +162,30 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: "Zipkin",
 			})
 
-			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-				MountPath: tracerHome,
-				Name:      dotnetVolumeName,
-			})
-		}
+			// Check if volume mount already exists
+			volumeMountExists := false
+			for _, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == dotnetVolumeName {
+					volumeMountExists = true
+					break
+				}
+			}
 
+			// If not, add volume mount
+			if !volumeMountExists {
+				container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+					MountPath: tracerHome,
+					Name:      dotnetVolumeName,
+				})
+			}
+		}
 		modifiedContainers = append(modifiedContainers, container)
 	}
 
 	podSpec.Spec.Containers = modifiedContainers
 }
 
-func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
-	// remove the empty directory volume
-	var newVolumes []v1.Volume
-	for _, volume := range podSpec.Spec.Volumes {
-		if volume.Name != dotnetVolumeName {
-			newVolumes = append(newVolumes, volume)
-		}
-	}
-	podSpec.Spec.Volumes = newVolumes
-
+func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	// remove the init container
 	var newInitContainers []v1.Container
 	for _, container := range podSpec.Spec.InitContainers {
@@ -172,13 +198,6 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the environment variables
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
-		//var newVolumeMounts []v1.VolumeMount
-		//for _, volumeMount := range container.VolumeMounts {
-		//	if volumeMount.Name != dotnetVolumeName {
-		//		newVolumeMounts = append(newVolumeMounts, volumeMount)
-		//	}
-		//}
-		//container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv {
@@ -193,6 +212,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
+	return nil
 }
 
 func (d *dotNetPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {

@@ -28,9 +28,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 )
 
 const (
@@ -177,50 +179,68 @@ func processLogType(ctx context.Context, req *ctrl.Request, podTemplateSpec *v1.
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
-		logger.Error(err, "error computing instrumented status")
+		logger.Error(err, "Error computing instrumented status")
 		return err
 	}
 	if instrumented != instApp.Status.TracesInstrumented {
-		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
+		logger.V(0).Info("Updating .status.instrumented", "instrumented", instrumented)
 		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, &instApp)
 		if err != nil {
-			logger.Error(err, "error computing instrumented status")
+			logger.Error(err, "Error updating instrumented status")
 			return err
 		}
 	}
 	annotations := podTemplateSpec.GetAnnotations()
-	// If logz.io/instrument is set to "rollback" and the app is instrumented, then rollback the instrumentation
 	if instrumented && annotations[patch.TracesInstrumentAnnotation] == "rollback" {
-		logger.V(0).Info("rolling back instrumentation for pod" + podTemplateSpec.Name)
-		logger.V(0).Info("podSpec before patching: "+podTemplateSpec.Name, "podSpec", podTemplateSpec)
-		//err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
-		//if err != nil {
-		//	logger.Error(err, "error getting object")
-		//	return err
-		//}
-		patchErr := patch.RollbackPatch(podTemplateSpec, &instApp)
-		if patchErr != nil {
-			logger.Error(patchErr, "error unpatching deployment / statefulset")
-			return patchErr
-		}
-		logger.V(0).Info("podSpec after patching: "+podTemplateSpec.Name, "podSpec", podTemplateSpec)
-		logger.V(0).Info("object after patching: "+object.GetName(), "object", object)
-		updateErr := c.Update(ctx, object)
-		if updateErr != nil {
-			logger.Error(updateErr, "error updating application")
-			return updateErr
-		}
-		logger.V(0).Info("successfully rolled back instrumentation, changing instrumented app status to not instrumented")
-		instApp.Status.TracesInstrumented = false
-		err = c.Status().Update(ctx, &instApp)
+		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
 		if err != nil {
-			logger.Error(err, "error updating InstrumentedApp status")
+			logger.Error(err, "Error getting object")
 			return err
 		}
+		err := patch.RollbackPatch(podTemplateSpec, &instApp)
+		if err != nil {
+			logger.Error(err, "Error unpatching deployment / statefulset")
+			return err
+		}
+
+		logger.V(0).Info("PodSpec after patching:", "podSpec", podTemplateSpec)
+		// Define an exponential backoff configuration
+		backoff := wait.Backoff{
+			Duration: time.Second * 2, // Initial delay
+			Factor:   2,               // Factor by which the delay is exponentially increased
+			Jitter:   0.1,             // Jitter to introduce some random variation in the delay
+			Steps:    5,               // Number of steps to retry
+		}
+		// The error variable to collect all errors encountered
+		var lastErr error
+		// Retry logic with exponential backoff
+		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
+			updateErr := c.Update(ctx, object)
+			if updateErr != nil {
+				// Save the error encountered
+				lastErr = updateErr
+				logger.Error(updateErr, "error instrumenting application, retrying...")
+				// Return false to indicate a retry should happen
+				return false, nil
+			}
+			// Return true to indicate the function was successful
+			return true, nil
+		})
+
+		if retryErr != nil || lastErr != nil {
+			if retryErr != nil {
+				logger.Error(lastErr, "error after retrying")
+			}
+			return lastErr
+		}
+
+		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
+		instApp.Status.TracesInstrumented = false
 	}
 	return nil
 }
+
 func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
@@ -238,16 +258,45 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 	}
 	// If not instrumented - patch deployment
 	if !instrumented {
+		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
+		if err != nil {
+			logger.Error(err, "Error getting object")
+			return err
+		}
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "error patching deployment / statefulset")
 			return err
 		}
-		err = c.Update(ctx, object)
-		if err != nil {
-			logger.Error(err, "error instrumenting application")
-			return err
+		// Define an exponential backoff configuration
+		backoff := wait.Backoff{
+			Duration: time.Second * 2, // Initial delay
+			Factor:   2,               // Factor by which the delay is exponentially increased
+			Jitter:   0.1,             // Jitter to introduce some random variation in the delay
+			Steps:    5,               // Number of steps to retry
+		}
+		// The error variable to collect all errors encountered
+		var lastErr error
+		// Retry logic with exponential backoff
+		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
+			updateErr := c.Update(ctx, object)
+			if updateErr != nil {
+				// Save the error encountered
+				lastErr = updateErr
+				logger.Error(updateErr, "error instrumenting application, retrying...")
+				// Return false to indicate a retry should happen
+				return false, nil
+			}
+			// Return true to indicate the function was successful
+			return true, nil
+		})
+
+		if retryErr != nil || lastErr != nil {
+			if retryErr != nil {
+				logger.Error(lastErr, "error after retrying")
+			}
+			return lastErr
 		}
 	}
 	return nil

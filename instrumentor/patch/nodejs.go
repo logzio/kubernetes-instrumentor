@@ -43,13 +43,23 @@ var nodeJs = &nodeJsPatcher{}
 type nodeJsPatcher struct{}
 
 func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
-	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
-		Name: nodeVolumeName,
-		VolumeSource: v1.VolumeSource{
-			EmptyDir: &v1.EmptyDirVolumeSource{},
-		},
-	})
-	// add detected language annotation
+	volumeExists := false
+	for _, volume := range podSpec.Spec.Volumes {
+		if volume.Name == nodeVolumeName {
+			volumeExists = true
+			break
+		}
+	}
+	if !volumeExists {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
+			Name: nodeVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
+	// Add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "javascript"
 	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
 
@@ -59,19 +69,30 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 		RunAsGroup:   podSpec.Spec.SecurityContext.RunAsGroup,
 		RunAsNonRoot: podSpec.Spec.SecurityContext.RunAsNonRoot,
 	}
-	// Add init container that copies the agent
-	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            nodeInitContainerName,
-		Image:           nodeAgentImage,
-		Command:         []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("%s/", nodeMountPath)},
-		SecurityContext: securityContext,
-		VolumeMounts: []v1.VolumeMount{
-			{
-				Name:      nodeVolumeName,
-				MountPath: nodeMountPath,
+
+	// Check if initContainer exists before adding
+	initContainerExists := false
+	for _, container := range podSpec.Spec.InitContainers {
+		if container.Name == nodeInitContainerName {
+			initContainerExists = true
+			break
+		}
+	}
+	if !initContainerExists {
+		// Add init container that copies the agent
+		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
+			Name:            nodeInitContainerName,
+			Image:           nodeAgentImage,
+			Command:         []string{"cp", "-a", "/autoinstrumentation/.", fmt.Sprintf("%s/", nodeMountPath)},
+			SecurityContext: securityContext,
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      nodeVolumeName,
+					MountPath: nodeMountPath,
+				},
 			},
-		},
-	})
+		})
+	}
 
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
@@ -114,18 +135,27 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  nodeEnvNodeOptions,
 				Value: fmt.Sprintf("--require %s/autoinstrumentation.js", nodeMountPath),
 			})
-
-			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-				MountPath: nodeMountPath,
-				Name:      nodeVolumeName,
-			})
+			// Add volume mount
+			volumeMountExists := false
+			for _, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == nodeVolumeName {
+					volumeMountExists = true
+					break
+				}
+			}
+			if !volumeMountExists {
+				container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+					MountPath: nodeMountPath,
+					Name:      nodeVolumeName,
+				})
+			}
 		}
 		modifiedContainers = append(modifiedContainers, container)
 	}
 	podSpec.Spec.Containers = modifiedContainers
 }
 
-func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
+func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	// remove the detected language annotation
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
@@ -138,25 +168,8 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		}
 	}
 	podSpec.Spec.InitContainers = newInitContainers
-
-	// remove the volume for the agent
-	var newVolumes []v1.Volume
-	for _, volume := range podSpec.Spec.Volumes {
-		if volume.Name != nodeVolumeName {
-			newVolumes = append(newVolumes, volume)
-		}
-	}
-	podSpec.Spec.Volumes = newVolumes
-
 	// remove environment variables from containers
 	for i, container := range podSpec.Spec.Containers {
-		var newVolumeMounts []v1.VolumeMount
-		for _, volumeMount := range container.VolumeMounts {
-			if volumeMount.Name != nodeVolumeName {
-				newVolumeMounts = append(newVolumeMounts, volumeMount)
-			}
-		}
-		container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, envVar := range container.Env {
 			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvTraceProtocol && envVar.Name != nodeEnvServiceName {
@@ -168,6 +181,7 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		}
 		podSpec.Spec.Containers[i].Env = newEnv
 	}
+	return nil
 }
 
 func (n *nodeJsPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {

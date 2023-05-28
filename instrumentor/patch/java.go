@@ -43,12 +43,25 @@ var java = &javaPatcher{}
 type javaPatcher struct{}
 
 func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
-	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
-		Name: javaVolumeName,
-		VolumeSource: v1.VolumeSource{
-			EmptyDir: &v1.EmptyDirVolumeSource{},
-		},
-	})
+	// Check if volume already exists
+	volumeExists := false
+	for _, vol := range podSpec.Spec.Volumes {
+		if vol.Name == javaVolumeName {
+			volumeExists = true
+			break
+		}
+	}
+
+	// If not, add volume
+	if !volumeExists {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, v1.Volume{
+			Name: javaVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
 	// add detected language annotation
 	podSpec.Annotations[LogzioLanguageAnnotation] = "java"
 	podSpec.Annotations[tracesInstrumentedAnnotation] = "true"
@@ -58,19 +71,31 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 		RunAsGroup:   podSpec.Spec.SecurityContext.RunAsGroup,
 		RunAsNonRoot: podSpec.Spec.SecurityContext.RunAsNonRoot,
 	}
-	// Add init container that copies the agent
-	podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-		Name:            javaInitContainerName,
-		Image:           javaAgentImage,
-		Command:         []string{"cp", "/javaagent.jar", "/agent/opentelemetry-javaagent-all.jar"},
-		SecurityContext: securityContext,
-		VolumeMounts: []v1.VolumeMount{
-			{
-				Name:      javaVolumeName,
-				MountPath: javaMountPath,
+
+	// Check if init container already exists
+	initContainerExists := false
+	for _, initContainer := range podSpec.Spec.InitContainers {
+		if initContainer.Name == javaInitContainerName {
+			initContainerExists = true
+			break
+		}
+	}
+
+	// If not, add init container
+	if !initContainerExists {
+		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
+			Name:            javaInitContainerName,
+			Image:           javaAgentImage,
+			Command:         []string{"cp", "/javaagent.jar", "/agent/opentelemetry-javaagent-all.jar"},
+			SecurityContext: securityContext,
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      javaVolumeName,
+					MountPath: javaMountPath,
+				},
 			},
-		},
-	})
+		})
+	}
 
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
@@ -117,31 +142,33 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 				Value: fmt.Sprintf(otelResourceAttrPatteern, calculateAppName(podSpec, &container, instrumentation), PodNameEnvValue),
 			})
 
-			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-				MountPath: javaMountPath,
-				Name:      javaVolumeName,
-			})
-		}
+			// Check if volume mount already exists
+			volumeMountExists := false
+			for _, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == javaVolumeName {
+					volumeMountExists = true
+					break
+				}
+			}
 
+			// If not, add volume mount
+			if !volumeMountExists {
+				container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+					MountPath: javaMountPath,
+					Name:      javaVolumeName,
+				})
+			}
+		}
 		modifiedContainers = append(modifiedContainers, container)
 	}
 
 	podSpec.Spec.Containers = modifiedContainers
 }
 
-func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
+func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	// remove the language annotations
 	delete(podSpec.Annotations, LogzioLanguageAnnotation)
 	delete(podSpec.Annotations, tracesInstrumentedAnnotation)
-	// remove the empty directory volume
-	var newVolumes []v1.Volume
-	for _, volume := range podSpec.Spec.Volumes {
-		if volume.Name != javaVolumeName {
-			newVolumes = append(newVolumes, volume)
-		}
-	}
-	podSpec.Spec.Volumes = newVolumes
-
 	// remove the init container
 	var newInitContainers []v1.Container
 	for _, container := range podSpec.Spec.InitContainers {
@@ -154,13 +181,6 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 	// remove the environment variables
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
-		//var newVolumeMounts []v1.VolumeMount
-		//for _, volumeMount := range container.VolumeMounts {
-		//	if volumeMount.Name != javaVolumeName {
-		//		newVolumeMounts = append(newVolumeMounts, volumeMount)
-		//	}
-		//}
-		//container.VolumeMounts = newVolumeMounts
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
 			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != javaToolOptionsEnvVar && env.Name != otelResourceAttributesEnvVar {
@@ -174,7 +194,7 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) {
 		modifiedContainers = append(modifiedContainers, container)
 	}
 	podSpec.Spec.Containers = modifiedContainers
-
+	return nil
 }
 
 func (j *javaPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {

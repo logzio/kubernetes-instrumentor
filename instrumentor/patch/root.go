@@ -29,16 +29,15 @@ import (
 )
 
 const (
-	NodeIPEnvName                 = "NODE_IP"
-	PodNameEnvVName               = "POD_NAME"
-	PodNameEnvValue               = "$(POD_NAME)"
-	LogzioLanguageAnnotation      = "logz.io/instrumentation-language"
-	tracesInstrumentedAnnotation  = "logz.io/traces-instrumented"
-	metricsInstrumentedAnnotation = "logz.io/metrics-instrumented"
-	pythonInitContainerName       = "copy-python-agent"
-	nodeInitContainerName         = "copy-nodejs-agent"
-	javaInitContainerName         = "copy-java-agent"
-	dotnetInitContainerName       = "copy-dotnet-agent"
+	NodeIPEnvName                = "NODE_IP"
+	PodNameEnvVName              = "POD_NAME"
+	PodNameEnvValue              = "$(POD_NAME)"
+	LogzioLanguageAnnotation     = "logz.io/instrumentation-language"
+	tracesInstrumentedAnnotation = "logz.io/traces-instrumented"
+	pythonInitContainerName      = "copy-python-agent"
+	nodeInitContainerName        = "copy-nodejs-agent"
+	javaInitContainerName        = "copy-java-agent"
+	dotnetInitContainerName      = "copy-dotnet-agent"
 )
 
 var (
@@ -51,7 +50,7 @@ var (
 
 type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
-	UnPatch(podSpec *v1.PodTemplateSpec)
+	UnPatch(podSpec *v1.PodTemplateSpec) error
 	IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool
 }
 
