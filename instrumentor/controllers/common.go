@@ -36,8 +36,9 @@ import (
 )
 
 const (
-	SkipAnnotation    = "logz.io/skip"
-	LogTypeAnnotation = "logz.io/application_type"
+	SkipAnnotation             = "logz.io/skip"
+	LogTypeAnnotation          = "logz.io/application_type"
+	TracesInstrumentAnnotation = "logz.io/traces_instrument"
 )
 
 func shouldSkip(annotations map[string]string, namespace string) bool {
@@ -122,7 +123,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		return nil
 	}
 	// detect log type
-	err = processLogType(ctx, req, podTemplateSpec, instApp, logger, c, object)
+	err = processLogType(ctx, podTemplateSpec, instApp, logger, c, object)
 	if err != nil {
 		return err
 	}
@@ -157,15 +158,13 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	return err
 }
 
-func processLogType(ctx context.Context, req *ctrl.Request, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
-	logger.V(0).Info("checking for log type annotation")
+func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	annotations := podTemplateSpec.GetAnnotations()
 	if annotations == nil {
 		logger.V(0).Info("No annotations found")
 		return nil
 	}
 	if annotations[LogTypeAnnotation] != "" {
-		logger.V(0).Info("found log type annotation", "logtype", annotations[LogTypeAnnotation])
 		instApp.Spec.LogType = annotations[LogTypeAnnotation]
 	}
 	err := c.Update(ctx, &instApp)
@@ -183,7 +182,6 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		return err
 	}
 	if instrumented != instApp.Status.TracesInstrumented {
-		logger.V(0).Info("Updating .status.instrumented", "instrumented", instrumented)
 		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, &instApp)
 		if err != nil {
@@ -192,7 +190,7 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		}
 	}
 	annotations := podTemplateSpec.GetAnnotations()
-	if instrumented && annotations[patch.TracesInstrumentAnnotation] == "rollback" {
+	if instrumented && annotations[TracesInstrumentAnnotation] == "rollback" {
 		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
 		if err != nil {
 			logger.Error(err, "Error getting object")
@@ -204,7 +202,6 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 			return err
 		}
 
-		logger.V(0).Info("PodSpec after patching:", "podSpec", podTemplateSpec)
 		// Define an exponential backoff configuration
 		backoff := wait.Backoff{
 			Duration: time.Second * 2, // Initial delay
@@ -224,19 +221,23 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 				// Return false to indicate a retry should happen
 				return false, nil
 			}
+			isntappUpdateErr := c.Status().Update(ctx, &instApp)
+			if isntappUpdateErr != nil {
+				logger.Error(err, "error updating instrumented status")
+				return false, nil
+			} else {
+				instApp.Status.TracesInstrumented = false
+			}
 			// Return true to indicate the function was successful
 			return true, nil
 		})
-
 		if retryErr != nil || lastErr != nil {
 			if retryErr != nil {
 				logger.Error(lastErr, "error after retrying")
 			}
 			return lastErr
 		}
-
 		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
-		instApp.Status.TracesInstrumented = false
 	}
 	return nil
 }
@@ -288,6 +289,13 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 				// Return false to indicate a retry should happen
 				return false, nil
 			}
+			err := c.Status().Update(ctx, &instApp)
+			if err != nil {
+				logger.Error(err, "error updating instrumented status")
+				return false, nil
+			} else {
+				instApp.Status.TracesInstrumented = false
+			}
 			// Return true to indicate the function was successful
 			return true, nil
 		})
@@ -303,7 +311,6 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 }
 
 func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, object client.Object) error {
-	logger.V(0).Info("Starting app detection")
 	detected, err := patch.IsDetected(ctx, podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented app status for annotation patching")
@@ -325,8 +332,7 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 
 func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
 	annotations := podTemplateSpec.GetAnnotations()
-	if annotations[patch.TracesInstrumentAnnotation] == "rollback" && instApp.Status.TracesInstrumented {
-		logger.V(0).Info("rollback annotation detected for traces instrumented app")
+	if annotations[TracesInstrumentAnnotation] == "rollback" {
 		return true
 	}
 	return false
@@ -334,16 +340,14 @@ func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logge
 
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	annotations := podSpec.GetAnnotations()
-	logger.V(0).Info("Checking if should instrument", "pod spec", podSpec, "pod name", podSpec.GetName())
 	if val, exists := annotations[patch.SkipAppDetectionAnnotation]; exists && val == "true" {
 		logger.V(0).Info("skipping instrumentation, skip annotation was set")
 		return false
 	}
 	// if logz.io/instrument is set to "true" - instrument the app
-	if annotations[patch.TracesInstrumentAnnotation] == "true" {
+	if annotations[TracesInstrumentAnnotation] == "true" {
 		return true
 	} else {
-		logger.V(0).Info("skipping instrumentation according to `logz.io/instrument` annotation")
 		return false
 	}
 }

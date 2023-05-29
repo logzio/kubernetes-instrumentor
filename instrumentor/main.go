@@ -45,7 +45,6 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(v1.AddToScheme(scheme))
 }
 

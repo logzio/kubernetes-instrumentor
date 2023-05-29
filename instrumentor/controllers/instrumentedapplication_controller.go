@@ -179,7 +179,6 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 }
 
 func (r *InstrumentedApplicationReconciler) startDetection(ctx context.Context, logger logr.Logger, instrumentedApp v1.InstrumentedApplication) (ctrl.Result, error) {
-	logger.V(0).Info("starting detection process")
 	instrumentedApp.Status.InstrumentationDetection.Phase = v1.RunningInstrumentationDetectionPhase
 	err := r.Status().Update(ctx, &instrumentedApp)
 	if err != nil {
