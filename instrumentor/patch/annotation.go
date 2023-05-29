@@ -32,7 +32,6 @@ import (
 const (
 	ApplicationTypeAnnotation  = "logz.io/application_type"
 	SkipAppDetectionAnnotation = "logz.io/skip_app_detection"
-	TracesInstrumentAnnotation = "logz.io/traces_instrument"
 )
 
 var PodOwnedLabels = []string{
