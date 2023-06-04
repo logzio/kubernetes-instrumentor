@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: ezkonnect-ui-container
-          image: resdeni/ezkonnect-ui:v0.0.5
+          image: logzio/ezkonnect-ui:v0.0.1
           ports:
             - containerPort: 8080
           env:

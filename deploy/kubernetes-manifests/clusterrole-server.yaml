@@ -6,11 +6,15 @@ rules:
   - apiGroups:
       - ""
       - logz.io
+      - apps
     resources:
       - pods
       - services
       - instrumentedapplications
+      - deployments
+      - statefulsets
     verbs:
       - get
       - list
       - watch
+      - update
