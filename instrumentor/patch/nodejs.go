@@ -20,12 +20,13 @@ package patch
 
 import (
 	"fmt"
+	"net"
+	"strings"
+
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	v1 "k8s.io/api/core/v1"
-	"net"
-	"strings"
 )
 
 const (

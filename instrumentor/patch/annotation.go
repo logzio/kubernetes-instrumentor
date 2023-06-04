@@ -20,14 +20,15 @@ package patch
 
 import (
 	"context"
+	"log"
+	"strings"
+
 	"github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	goclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 var PodOwnedLabels = []string{

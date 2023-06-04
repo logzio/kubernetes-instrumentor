@@ -20,8 +20,9 @@ package main
 
 import (
 	"flag"
-	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	"os"
+
+	"github.com/logzio/kubernetes-instrumentor/common/consts"
 
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 

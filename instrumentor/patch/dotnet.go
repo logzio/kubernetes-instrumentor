@@ -20,10 +20,11 @@ package patch
 
 import (
 	"fmt"
+	"strings"
+
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
-	"strings"
 )
 
 const (

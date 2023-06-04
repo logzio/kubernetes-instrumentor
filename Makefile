@@ -1,5 +1,14 @@
 TAG ?= 0.0.1
 
+
+.PHONY: install-tools
+install-tools:
+	go install github.com/google/addlicense@latest
+	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/client9/misspell/cmd/misspell@latest
+	go install github.com/pavius/impi/cmd/impi@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.3
+
 .PHONY: build-images
 build-images:
 	docker build -t logzio/instrumentation-detector:$(TAG)  -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
@@ -24,14 +33,18 @@ push-images-agents:
 	docker push logzio/otel-agent-nodejs:$(TAG)
 	docker push logzio/otel-agent-python:$(TAG)
 
+.PHONY: build-all-latest
 build-all-latest:
 	TAG=latest make build-images
 	TAG=latest make push-images
 	TAG=latest make build-images-agents
 	TAG=latest make push-images-agents
 
+.PHONY: build-all-tag
 build-all-tag:
 	make build-images
 	make push-images
 	make build-images-agents
 	make push-images-agents
+
+

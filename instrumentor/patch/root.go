@@ -21,10 +21,11 @@ package patch
 import (
 	"context"
 	"fmt"
+	"os"
+
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -108,7 +109,7 @@ func getLangsInResult(instrumentation *apiV1.InstrumentedApplication) []common.P
 	}
 
 	var langs []common.ProgrammingLanguage
-	for l, _ := range langMap {
+	for l := range langMap {
 		langs = append(langs, l)
 	}
 

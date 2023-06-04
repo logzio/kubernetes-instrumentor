@@ -20,6 +20,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/go-logr/logr"
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
