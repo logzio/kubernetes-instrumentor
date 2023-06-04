@@ -47,4 +47,12 @@ build-push-all-tag:
 	make build-images-agents
 	make push-images-agents
 
+.PHONY: kubectl-deploy
+kubectl-deploy:
+	kubectl apply -f deploy/kubernetes-manifests
+	kubectl apply -f deploy/services-demo
 
+.PHONY: kubectl-clean
+kubectl-clean:
+	kubectl delete -f deploy/kubernetes-manifests
+	kubectl delete -f deploy/services-demo
