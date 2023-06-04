@@ -29,11 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	ApplicationTypeAnnotation  = "logz.io/application_type"
-	SkipAppDetectionAnnotation = "logz.io/skip_app_detection"
-)
-
 var PodOwnedLabels = []string{
 	"app",
 	"app.kubernetes.io/name",
@@ -61,7 +56,7 @@ func (d *AnnotationPatcher) Patch(ctx context.Context, detected *v1alpha1.Instru
 				if pod.Annotations == nil {
 					pod.Annotations = make(map[string]string)
 				}
-				pod.Annotations[ApplicationTypeAnnotation] = string(detected.Spec.Applications[0].Application)
+				pod.Annotations[consts.ApplicationTypeAnnotation] = string(detected.Spec.Applications[0].Application)
 				_, err := podClient.Update(ctx, &pod, metav1.UpdateOptions{})
 				if err != nil {
 					return err
@@ -79,7 +74,7 @@ func getKubeClient() (*goclient.CoreV1Client, error) {
 		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 		config, err := kubeConfig.ClientConfig()
 		if err != nil {
-			log.Println("Error creating kubernetes client creating config")
+			log.Println("Error creating kubernetes client config")
 			return nil, err
 		}
 		clusterClient = goclient.NewForConfigOrDie(config)
@@ -101,7 +96,7 @@ func podOwnedByObject(labels map[string]string, name string) bool {
 
 func (d *AnnotationPatcher) shouldPatch(annotations map[string]string, namespace string) bool {
 	for k, v := range annotations {
-		if (k == SkipAppDetectionAnnotation && v == "true") || k == ApplicationTypeAnnotation {
+		if (k == consts.SkipAppDetectionAnnotation && v == "true") || k == consts.ApplicationTypeAnnotation {
 			return false
 		}
 	}

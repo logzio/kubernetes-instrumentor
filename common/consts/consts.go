@@ -26,6 +26,8 @@ const (
 	DefaultNamespace                               = "monitoring"
 	OTLPPort                                       = 4317
 	OTLPHttpPort                                   = 4318
+	ApplicationTypeAnnotation                      = "logz.io/application_type"
+	SkipAppDetectionAnnotation                     = "logz.io/skip_app_detection"
 )
 
 var (
