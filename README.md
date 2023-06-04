@@ -24,7 +24,6 @@ To configure the `logzio-instrumentor` container, you can use the following argu
 - `instrumentation-detector-tag`: The container tag to use for language detection, with a default value of `latest`.
 - `instrumentation-detector-image`: The container image to use for language detection, with a default value of `logzio/instrumentation-detector`.
 - `delete-detection-pods`: A flag that enables automatic termination of detection pods, with a default value of `true`.
-- `log-level`: A flag for setting the log level for the service, with a default value of `1` (`info`).
 - `metrics-bind-address`: The address the metrics endpoint binds to, with a default value of `:8080`.
 - `health-probe-bind-address`: The address the health probe endpoint binds to, with a default value of `:8081`.
 - `leader-elect`: A flag that enables leader election for the controller manager, with a default value of false.

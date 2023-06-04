@@ -21,6 +21,7 @@ package patch
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
@@ -125,7 +126,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  nodeEnvEndpoint,
-				Value: net.JoinHostPort(LogzioMonitoringService, consts.OTLPPortStr),
+				Value: net.JoinHostPort(LogzioMonitoringService, strconv.Itoa(consts.OTLPPort)),
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
