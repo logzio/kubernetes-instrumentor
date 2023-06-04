@@ -1,3 +1,5 @@
+TAG ?= 0.0.1
+
 .PHONY: build-images
 build-images:
 	docker build -t logzio/instrumentation-detector:$(TAG)  -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
@@ -21,3 +23,15 @@ push-images-agents:
 	docker push logzio/otel-agent-java:$(TAG)
 	docker push logzio/otel-agent-nodejs:$(TAG)
 	docker push logzio/otel-agent-python:$(TAG)
+
+build-all-latest:
+	TAG=latest make build-images
+	TAG=latest make push-images
+	TAG=latest make build-images-agents
+	TAG=latest make push-images-agents
+
+build-all-tag:
+	make build-images
+	make push-images
+	make build-images-agents
+	make push-images-agents
