@@ -35,22 +35,22 @@ spec:
           - --health-probe-bind-address=:8081
           - --metrics-bind-address=127.0.0.1:8080
           - --leader-elect
-          - --instrumentation-detector-tag=0.0.1
+          - --instrumentation-detector-tag=0.0.3
           - --instrumentation-detector-image=logzio/instrumentation-detector
         command:
           - /app
-        image: "logzio/instrumentor:0.0.1"
+        image: "logzio/instrumentor:0.0.3"
         env:
           - name: MONITORING_SERVICE_ENDPOINT
             value: "logzio-monitoring-otel-collector.monitoring.svc.cluster.local"
           - name: DOTNET_AGENT_IMAGE
-            value: "logzio/otel-agent-dotnet:0.0.1"
+            value: "logzio/otel-agent-dotnet:0.0.2"
           - name: JAVA_AGENT_IMAGE
-            value: "logzio/otel-agent-java:v0.0.1"
+            value: "logzio/otel-agent-java:v0.0.2"
           - name: NODEJS_AGENT_IMAGE
-            value: "logzio/otel-agent-nodejs:0.0.1"
+            value: "logzio/otel-agent-nodejs:0.0.2"
           - name: PYTHON_AGENT_IMAGE
-            value: "logzio/otel-agent-python:0.0.1"
+            value: "logzio/otel-agent-python:0.0.2"
           - name: CURRENT_NS
             valueFrom:
               fieldRef:

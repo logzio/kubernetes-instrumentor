@@ -1,4 +1,4 @@
-TAG ?= 0.0.1
+TAG ?= 0.0.3
 
 
 .PHONY: install-tools
@@ -33,15 +33,15 @@ push-images-agents:
 	docker push logzio/otel-agent-nodejs:$(TAG)
 	docker push logzio/otel-agent-python:$(TAG)
 
-.PHONY: build-all-latest
-build-all-latest:
+.PHONY: build-push-all-latest
+build-push-all-latest:
 	TAG=latest make build-images
 	TAG=latest make push-images
 	TAG=latest make build-images-agents
 	TAG=latest make push-images-agents
 
-.PHONY: build-all-tag
-build-all-tag:
+.PHONY: build-push-all-tag
+build-push-all-tag:
 	make build-images
 	make push-images
 	make build-images-agents

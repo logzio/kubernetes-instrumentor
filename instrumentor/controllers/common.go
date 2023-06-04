@@ -198,6 +198,7 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 			logger.Error(err, "Error getting object")
 			return err
 		}
+		logger.V(0).Info("Rolling back instrumentation", "object", object)
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "Error unpatching deployment / statefulset")
@@ -213,13 +214,13 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		}
 		// The error variable to collect all errors encountered
 		var lastErr error
+		logger.V(0).Info("updating object after rollback", "object", object)
 		// Retry logic with exponential backoff
 		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			updateStatusErr := c.Status().Update(ctx, object)
 			updateErr := c.Update(ctx, object)
-			if updateErr != nil || updateStatusErr != nil {
+			if updateErr != nil {
 				// Save the error encountered
-				lastErr = errors.New(updateErr.Error() + updateStatusErr.Error())
+				lastErr = errors.New(updateErr.Error())
 				logger.Error(updateErr, "error instrumenting application, retrying...")
 				// Return false to indicate a retry should happen
 				return false, nil
