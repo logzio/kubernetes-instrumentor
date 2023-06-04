@@ -333,7 +333,7 @@ func (r *InstrumentedApplicationReconciler) getOwnerTemplateLabels(ctx context.C
 		return ss.Spec.Template.Labels, nil
 	}
 
-	return nil, errors.New("unrecognized owner kind")
+	return nil, errors.New("unrecognized owner kind:" + owner.Kind)
 }
 
 // SetupWithManager sets up the controller with the Manager.
