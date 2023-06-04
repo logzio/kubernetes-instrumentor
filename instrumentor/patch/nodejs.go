@@ -188,7 +188,7 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 func (n *nodeJsPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
-		if key == tracesInstrumentedAnnotation && value == "true" {
+		if key == tracesInstrumentedAnnotation && strings.ToLower(value) == "true" {
 			return true
 		}
 	}

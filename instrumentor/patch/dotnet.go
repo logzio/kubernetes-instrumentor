@@ -23,6 +23,7 @@ import (
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
+	"strings"
 )
 
 const (
@@ -218,7 +219,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 func (d *dotNetPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already instrumented
 	for key, value := range podSpec.Annotations {
-		if key == tracesInstrumentedAnnotation && value == "true" {
+		if key == tracesInstrumentedAnnotation && strings.ToLower(value) == "true" {
 			return true
 		}
 	}

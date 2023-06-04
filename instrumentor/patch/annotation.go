@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 )
 
 var PodOwnedLabels = []string{
@@ -96,7 +97,7 @@ func podOwnedByObject(labels map[string]string, name string) bool {
 
 func (d *AnnotationPatcher) shouldPatch(annotations map[string]string, namespace string) bool {
 	for k, v := range annotations {
-		if (k == consts.SkipAppDetectionAnnotation && v == "true") || k == consts.ApplicationTypeAnnotation {
+		if (k == consts.SkipAppDetectionAnnotation && strings.ToLower(v) == "true") || k == consts.ApplicationTypeAnnotation {
 			return false
 		}
 	}

@@ -32,6 +32,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
 	"time"
 )
 
@@ -43,7 +44,7 @@ const (
 
 func shouldSkip(annotations map[string]string, namespace string) bool {
 	for k, v := range annotations {
-		if k == SkipAnnotation && v == "true" {
+		if k == SkipAnnotation && strings.ToLower(v) == "true" {
 			return true
 		}
 	}
@@ -128,14 +129,14 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		return err
 	}
 	// instrumentation detection process
-	if shouldInstrument(podTemplateSpec, logger) {
+	if shouldInstrument(podTemplateSpec) {
 		err = processInstrumentedApps(ctx, podTemplateSpec, instApp, logger, c, object)
 		if err != nil {
 			logger.Error(err, "Encountered an error while trying to process instrumented apps")
 			return err
 		}
 	}
-	if shouldRollBackTraces(podTemplateSpec, logger, instApp) {
+	if shouldRollBackTraces(podTemplateSpec) {
 		err = processRollback(ctx, podTemplateSpec, instApp, logger, c, object)
 		if err != nil {
 			logger.Error(err, "Encountered an error while trying to process rollback")
@@ -190,7 +191,7 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		}
 	}
 	annotations := podTemplateSpec.GetAnnotations()
-	if instrumented && annotations[TracesInstrumentAnnotation] == "rollback" {
+	if instrumented && strings.ToLower(annotations[TracesInstrumentAnnotation]) == "rollback" {
 		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
 		if err != nil {
 			logger.Error(err, "Error getting object")
@@ -331,22 +332,21 @@ func processDetectedApps(ctx context.Context, req *ctrl.Request, c client.Client
 	return nil
 }
 
-func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logger, instApp apiV1.InstrumentedApplication) bool {
+func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec) bool {
 	annotations := podTemplateSpec.GetAnnotations()
-	if annotations[TracesInstrumentAnnotation] == "rollback" {
+	if val, exists := annotations[TracesInstrumentAnnotation]; exists && strings.ToLower(val) == "rollback" {
 		return true
 	}
 	return false
 }
 
-func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
+func shouldInstrument(podSpec *v1.PodTemplateSpec) bool {
 	annotations := podSpec.GetAnnotations()
-	if val, exists := annotations[consts.SkipAppDetectionAnnotation]; exists && val == "true" {
-		logger.V(0).Info("skipping instrumentation, skip annotation was set")
+	if val, exists := annotations[consts.SkipAppDetectionAnnotation]; exists && strings.ToLower(val) == "true" {
 		return false
 	}
 	// if logz.io/instrument is set to "true" - instrument the app
-	if annotations[TracesInstrumentAnnotation] == "true" {
+	if val, exists := annotations[TracesInstrumentAnnotation]; exists && strings.ToLower(val) == "true" {
 		return true
 	} else {
 		return false
@@ -355,7 +355,7 @@ func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 
 func shouldDetectApps(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	annotations := podSpec.GetAnnotations()
-	if val, exists := annotations[consts.SkipAppDetectionAnnotation]; exists && val == "true" {
+	if val, exists := annotations[consts.SkipAppDetectionAnnotation]; exists && strings.ToLower(val) == "true" {
 		logger.V(0).Info("skipping app detection, skip annotation was set")
 		return false
 	}

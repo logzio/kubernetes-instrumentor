@@ -24,6 +24,7 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	v1 "k8s.io/api/core/v1"
+	"strings"
 )
 
 const (
@@ -193,7 +194,7 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 
 func (p *pythonPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	for key, value := range podSpec.Annotations {
-		if key == tracesInstrumentedAnnotation && value == "true" {
+		if key == tracesInstrumentedAnnotation && strings.ToLower(value) == "true" {
 			return true
 		}
 	}

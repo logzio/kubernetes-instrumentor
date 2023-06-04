@@ -200,7 +200,7 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 func (j *javaPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	// check if the pod is already traces instrumented
 	for key, value := range podSpec.Annotations {
-		if key == tracesInstrumentedAnnotation && value == "true" {
+		if key == tracesInstrumentedAnnotation && strings.ToLower(value) == "true" {
 			return true
 		}
 	}
