@@ -24,6 +24,7 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	v1 "k8s.io/api/core/v1"
+	"net"
 	"strings"
 )
 
@@ -123,7 +124,7 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  nodeEnvEndpoint,
-				Value: fmt.Sprintf("%s:%d", LogzioMonitoringService, consts.OTLPPort),
+				Value: net.JoinHostPort(LogzioMonitoringService, consts.OTLPPortStr),
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
