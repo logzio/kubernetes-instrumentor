@@ -196,7 +196,7 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 			logger.Error(err, "Error getting object")
 			return err
 		}
-		err := patch.RollbackPatch(podTemplateSpec, &instApp)
+		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
 			logger.Error(err, "Error unpatching deployment / statefulset")
 			return err
@@ -213,10 +213,11 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		var lastErr error
 		// Retry logic with exponential backoff
 		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
+			updateStatusErr := c.Status().Update(ctx, object)
 			updateErr := c.Update(ctx, object)
-			if updateErr != nil {
+			if updateErr != nil || updateStatusErr != nil {
 				// Save the error encountered
-				lastErr = updateErr
+				lastErr = errors.New(updateErr.Error() + updateStatusErr.Error())
 				logger.Error(updateErr, "error instrumenting application, retrying...")
 				// Return false to indicate a retry should happen
 				return false, nil
@@ -340,7 +341,7 @@ func shouldRollBackTraces(podTemplateSpec *v1.PodTemplateSpec, logger logr.Logge
 
 func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	annotations := podSpec.GetAnnotations()
-	if val, exists := annotations[patch.SkipAppDetectionAnnotation]; exists && val == "true" {
+	if val, exists := annotations[consts.SkipAppDetectionAnnotation]; exists && val == "true" {
 		logger.V(0).Info("skipping instrumentation, skip annotation was set")
 		return false
 	}
@@ -354,12 +355,12 @@ func shouldInstrument(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 
 func shouldDetectApps(podSpec *v1.PodTemplateSpec, logger logr.Logger) bool {
 	annotations := podSpec.GetAnnotations()
-	if val, exists := annotations[patch.SkipAppDetectionAnnotation]; exists && val == "true" {
+	if val, exists := annotations[consts.SkipAppDetectionAnnotation]; exists && val == "true" {
 		logger.V(0).Info("skipping app detection, skip annotation was set")
 		return false
 	}
 
-	if _, exists := annotations[patch.ApplicationTypeAnnotation]; exists {
+	if _, exists := annotations[consts.ApplicationTypeAnnotation]; exists {
 		logger.V(0).Info("skipping app detection, application type annotation already exists")
 		return false
 	}
