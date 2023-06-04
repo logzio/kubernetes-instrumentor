@@ -20,6 +20,7 @@ package main
 
 import (
 	"flag"
+	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	"os"
 
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
@@ -100,14 +101,14 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
+		setupLog.Error(err, "unable to create controller", "controller", consts.SupportedResourceDeployment)
 		os.Exit(1)
 	}
 	if err = (&controllers.StatefulSetReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "StatefulSet")
+		setupLog.Error(err, "unable to create controller", "controller", consts.SupportedResourceStatefulSet)
 		os.Exit(1)
 	}
 

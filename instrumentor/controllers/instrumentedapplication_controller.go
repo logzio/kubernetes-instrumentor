@@ -309,7 +309,7 @@ func (r *InstrumentedApplicationReconciler) getOwnerTemplateLabels(ctx context.C
 		return nil, errors.New("could not find owner for InstrumentedApp")
 	}
 
-	if owner.Kind == "Deployment" && owner.APIVersion == appsv1.SchemeGroupVersion.String() {
+	if owner.Kind == consts.SupportedResourceDeployment && owner.APIVersion == appsv1.SchemeGroupVersion.String() {
 		var dep appsv1.Deployment
 		err := r.Get(ctx, client.ObjectKey{
 			Namespace: instrumentedApp.Namespace,
@@ -320,7 +320,7 @@ func (r *InstrumentedApplicationReconciler) getOwnerTemplateLabels(ctx context.C
 		}
 
 		return dep.Spec.Template.Labels, nil
-	} else if owner.Kind == "StatefulSet" && owner.APIVersion == appsv1.SchemeGroupVersion.String() {
+	} else if owner.Kind == consts.SupportedResourceStatefulSet && owner.APIVersion == appsv1.SchemeGroupVersion.String() {
 		var ss appsv1.StatefulSet
 		err := r.Get(ctx, client.ObjectKey{
 			Namespace: instrumentedApp.Namespace,

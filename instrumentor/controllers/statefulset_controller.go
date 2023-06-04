@@ -22,6 +22,7 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	v1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
+	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -92,7 +93,7 @@ func (r *StatefulSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return nil
 		}
 
-		if owner.APIVersion != appsv1.SchemeGroupVersion.String() || owner.Kind != "StatefulSet" {
+		if owner.APIVersion != appsv1.SchemeGroupVersion.String() || owner.Kind != consts.SupportedResourceStatefulSet {
 			return nil
 		}
 

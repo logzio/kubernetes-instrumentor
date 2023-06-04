@@ -29,6 +29,8 @@ const (
 	OTLPHttpPort                                   = 4318
 	ApplicationTypeAnnotation                      = "logz.io/application_type"
 	SkipAppDetectionAnnotation                     = "logz.io/skip_app_detection"
+	SupportedResourceDeployment                    = "Deployment"
+	SupportedResourceStatefulSet                   = "StatefulSet"
 )
 
 var (
