@@ -212,7 +212,7 @@ func (r *InstrumentedApplicationReconciler) isAppDetected(app *v1.InstrumentedAp
 }
 
 func (r *InstrumentedApplicationReconciler) detectLanguage(ctx context.Context, app *v1.InstrumentedApplication, labels map[string]string) error {
-	pod, err := r.choosePods(ctx, labels, app.Namespace)
+	pod, err := r.choosePod(ctx, labels, app.Namespace)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func (r *InstrumentedApplicationReconciler) detectLanguage(ctx context.Context, 
 	return err
 }
 
-func (r *InstrumentedApplicationReconciler) choosePods(ctx context.Context, labels map[string]string, namespace string) (*corev1.Pod, error) {
+func (r *InstrumentedApplicationReconciler) choosePod(ctx context.Context, labels map[string]string, namespace string) (*corev1.Pod, error) {
 	var podList corev1.PodList
 	err := r.List(ctx, &podList, client.MatchingLabels(labels), client.InNamespace(namespace))
 	if err != nil {
