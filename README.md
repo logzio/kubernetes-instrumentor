@@ -44,5 +44,5 @@ make push-images
 ```
 
 ## Change log
-* v0.0.1
+* v1.0.0 - Initial release
     - language detector and auto instrumentation microservice for kubernetes
