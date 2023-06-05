@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ezkonnect-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ezkonnect-ui
+  template:
+    metadata:
+      labels:
+        app: ezkonnect-ui
+    spec:
+      containers:
+        - name: ezkonnect-ui-container
+          image: logzio/ezkonnect-ui:v0.0.2
+          ports:
+            - containerPort: 8080
+          env:
+            - name: VITE_ENDPOINT_API
+              value: "http://ezkonnect-server.default.svc.cluster.local:5050"
