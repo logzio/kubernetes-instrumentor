@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: ezkonnect-server
-          image: logzio/ezkonnect-server:0.0.1
+          image: logzio/ezkonnect-server:v1.0.0
           ports:
             - containerPort: 5050
 ---
