@@ -34,6 +34,7 @@ const (
 	PodNameEnvVName              = "POD_NAME"
 	PodNameEnvValue              = "$(POD_NAME)"
 	LogzioLanguageAnnotation     = "logz.io/instrumentation-language"
+	LogzioServiceAnnotationName  = "logz.io/service-name"
 	tracesInstrumentedAnnotation = "logz.io/traces-instrumented"
 	pythonInitContainerName      = "copy-python-agent"
 	nodeInitContainerName        = "copy-nodejs-agent"
@@ -136,8 +137,12 @@ func getIndexOfEnv(envs []v1.EnvVar, name string) int {
 	return -1
 }
 
-func calculateAppName(podSpace *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
-	if len(podSpace.Spec.Containers) > 1 {
+func calculateAppName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
+	if podSpec.Annotations[LogzioServiceAnnotationName] != "" {
+		return podSpec.Annotations[LogzioServiceAnnotationName]
+	}
+
+	if len(podSpec.Spec.Containers) > 1 {
 		return currentContainer.Name
 	}
 
