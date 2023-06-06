@@ -42,8 +42,8 @@ build-push-all-latest:
 build-push-all-tag:
 	make build-images
 	make push-images
-	make build-images-agents
-	make push-images-agents
+#	make build-images-agents
+#	make push-images-agents
 
 .PHONY: kubectl-deploy
 kubectl-deploy:
