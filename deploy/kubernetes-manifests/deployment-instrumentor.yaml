@@ -35,11 +35,11 @@ spec:
           - --health-probe-bind-address=:8081
           - --metrics-bind-address=127.0.0.1:8080
           - --leader-elect
-          - --instrumentation-detector-tag=v1.0.0
+          - --instrumentation-detector-tag=v0.0.2
           - --instrumentation-detector-image=logzio/instrumentation-detector
         command:
           - /app
-        image: "logzio/instrumentor:v1.0.0"
+        image: "logzio/instrumentor:v0.0.2"
         env:
           - name: MONITORING_SERVICE_ENDPOINT
             value: "logzio-monitoring-otel-collector.monitoring.svc.cluster.local"
