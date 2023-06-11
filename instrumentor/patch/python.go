@@ -139,11 +139,6 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: envValOtelHttpExporter,
 			})
 
-			container.Env = append(container.Env, v1.EnvVar{
-				Name:  envOtelMetricsExporter,
-				Value: "",
-			})
-
 			// Check if volume mount already exists
 			volumeMountExists := false
 			for _, volumeMount := range container.VolumeMounts {

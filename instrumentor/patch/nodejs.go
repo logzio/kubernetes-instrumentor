@@ -133,11 +133,22 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  nodeEnvServiceName,
 				Value: calculateAppName(podSpec, &container, instrumentation),
 			})
-
-			container.Env = append(container.Env, v1.EnvVar{
-				Name:  nodeEnvNodeOptions,
-				Value: fmt.Sprintf("--require %s/autoinstrumentation.js", nodeMountPath),
-			})
+			// Check for existing node options
+			nodeOptionsExists := false
+			for idx, envVar := range container.Env {
+				if envVar.Name == nodeEnvNodeOptions {
+					// Append to existing node options
+					container.Env[idx].Value = fmt.Sprintf("%s --require %s/autoinstrumentation.js", envVar.Value, nodeMountPath)
+					nodeOptionsExists = true
+					break
+				}
+			}
+			if !nodeOptionsExists {
+				container.Env = append(container.Env, v1.EnvVar{
+					Name:  nodeEnvNodeOptions,
+					Value: fmt.Sprintf("--require %s/autoinstrumentation.js", nodeMountPath),
+				})
+			}
 			// Add volume mount
 			volumeMountExists := false
 			for _, volumeMount := range container.VolumeMounts {
