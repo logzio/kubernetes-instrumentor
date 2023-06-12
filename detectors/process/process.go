@@ -33,23 +33,23 @@ type Details struct {
 	ProcessID int
 	ExeName   string
 	CmdLine   string
+	Env       map[string]string
 }
 
-func FindAllInContainer(podUID string, containerName string) ([]Details, []Details, error) {
+func FindAllInContainer(podUID string, containerName string) ([]Details, error) {
 	proc, err := os.Open("/proc")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var detectedContainers []Details
-	var detectedApps []Details
 	for {
 		dirs, err := proc.Readdir(15)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		for _, di := range dirs {
@@ -64,7 +64,7 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, []Detai
 
 			pid, err := strconv.Atoi(dname)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			mi, err := mountinfo.GetMountInfo(path.Join("/proc", dname, "mountinfo"))
@@ -92,16 +92,31 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, []Detai
 						cmd = string(cmdLine)
 					}
 
+					// Read environment variables
+					envFilePath := path.Join("/proc", strconv.Itoa(pid), "environ")
+					envBytes, err := os.ReadFile(envFilePath)
+					if err != nil {
+						log.Println("Error reading env file", envFilePath)
+						return nil, err
+					}
+
+					env := make(map[string]string)
+					for _, line := range strings.Split(string(envBytes), "\x00") {
+						if line == "" {
+							continue
+						}
+						parts := strings.SplitN(line, "=", 2)
+						if len(parts) != 2 {
+							continue // Skip malformed entries
+						}
+						env[parts[0]] = parts[1]
+					}
+
 					detectedContainers = append(detectedContainers, Details{
 						ProcessID: pid,
 						ExeName:   exeName,
 						CmdLine:   cmd,
-					})
-
-					detectedApps = append(detectedApps, Details{
-						ProcessID: pid,
-						ExeName:   exeName,
-						CmdLine:   cmd,
+						Env:       env,
 					})
 				}
 			}
@@ -109,5 +124,5 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, []Detai
 	}
 
 	log.Println("No processes found")
-	return detectedContainers, detectedApps, nil
+	return detectedContainers, nil
 }
