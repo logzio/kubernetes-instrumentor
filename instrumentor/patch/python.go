@@ -32,7 +32,6 @@ const (
 	pythonVolumeName       = "agentdir-python"
 	pythonMountPath        = "/otel-auto-instrumentation"
 	envOtelTracesExporter  = "OTEL_TRACES_EXPORTER"
-	envOtelMetricsExporter = "OTEL_METRICS_EXPORTER"
 	envValOtelHttpExporter = "otlp_proto_http"
 	envLogCorrelation      = "OTEL_PYTHON_LOG_CORRELATION"
 )
@@ -179,7 +178,7 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for i, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter && env.Name != envOtelMetricsExporter {
+			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter {
 				newEnv = append(newEnv, env)
 			}
 		}
