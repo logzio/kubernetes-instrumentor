@@ -44,5 +44,12 @@ make push-images
 ```
 
 ## Change log
+* v1.0.3
+    - Add support for opentelemetry detection
+    - `nodejs`: check for existing `NODE_OPTIONS`
+    - `python`: remove metrics exporter
+* v1.0.2
+    - Add support for setting service name using logz.io/service-name annotation
 * v1.0.0 - Initial release
     - language detector and auto instrumentation microservice for kubernetes
+
