@@ -202,6 +202,8 @@ spec:
               value: fake_password
             - name: MYSQL_DATABASE
               value: socksdb
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.otel-collector.svc.cluster.local:4317"
           ports:
             - name: mysql
               containerPort: 3306
@@ -249,6 +251,8 @@ spec:
           env:
             - name: SESSION_REDIS
               value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.otel-collector.svc.cluster.local:4317"
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -273,7 +277,7 @@ spec:
   ports:
     - port: 80
       targetPort: 8079
-      nodePort: 30005
+      nodePort: 30007
   selector:
     name: front-end
 ---

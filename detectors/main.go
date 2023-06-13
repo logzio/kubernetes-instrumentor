@@ -24,6 +24,7 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/common"
 	"github.com/logzio/kubernetes-instrumentor/detectors/appDetector"
 	"github.com/logzio/kubernetes-instrumentor/detectors/langDetector"
+	"github.com/logzio/kubernetes-instrumentor/detectors/opentelemetryDetector"
 	"github.com/logzio/kubernetes-instrumentor/detectors/process"
 	"io/fs"
 	"log"
@@ -41,7 +42,7 @@ func main() {
 	var containerResults []common.LanguageByContainer
 	var detectedAppResults []common.ApplicationByContainer
 	for _, containerName := range args.ContainerNames {
-		processes, detectedApps, err := process.FindAllInContainer(args.PodUID, containerName)
+		processes, err := process.FindAllInContainer(args.PodUID, containerName)
 		if err != nil {
 			log.Fatalf("could not find processes, error: %s\n", err)
 		}
@@ -49,14 +50,19 @@ func main() {
 		processResults, processName := langDetector.DetectLanguage(processes)
 		log.Printf("detection result: %s\n", processResults)
 
-		detectedAppName := appDetector.DetectApplication(detectedApps)
+		detectedAppName := appDetector.DetectApplication(processes)
 		log.Printf("detection app result: %s\n", detectedAppName)
 
 		if len(processResults) > 0 {
+			// OpenTelemetry detection if language detected
+			otelDetected := opentelemetryDetector.DetectApplication(processes)
+			log.Printf("opentelemetry detection result: %v\n", otelDetected)
+
 			containerResults = append(containerResults, common.LanguageByContainer{
-				ContainerName: containerName,
-				Language:      processResults[0],
-				ProcessName:   processName,
+				ContainerName:              containerName,
+				Language:                   processResults[0],
+				ProcessName:                processName,
+				OpentelemetryPreconfigured: otelDetected,
 			})
 		}
 

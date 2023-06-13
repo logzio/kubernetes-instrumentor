@@ -73,6 +73,7 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		return err
 	}
 
+	// if no InstrumentedApp found - create one
 	if len(instApps.Items) == 0 {
 		if readyReplicas == 0 {
 			logger.V(0).Info("not enough ready replicas, waiting for pods to be ready")
@@ -114,11 +115,11 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 
 		return nil
 	}
-
+	// if more than one InstrumentedApp found - return error
 	if len(instApps.Items) > 1 {
 		return errors.New("found more than one InstrumentedApp")
 	}
-
+	// if InstrumentedApp found - run process
 	// if lang not detected - stay in function and check for app detection
 	instApp := instApps.Items[0]
 	if instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
