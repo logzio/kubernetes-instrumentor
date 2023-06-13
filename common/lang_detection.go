@@ -19,10 +19,10 @@ Credits: https://github.com/keyval-dev/odigos
 package common
 
 type LanguageByContainer struct {
-	ContainerName         string              `json:"containerName"`
-	Language              ProgrammingLanguage `json:"language"`
-	ProcessName           string              `json:"processName,omitempty"`
-	OpentelemetryDetected bool                `json:"opentelemetryDetected"`
+	ContainerName              string              `json:"containerName"`
+	Language                   ProgrammingLanguage `json:"language"`
+	ProcessName                string              `json:"processName,omitempty"`
+	OpentelemetryPreconfigured bool                `json:"opentelemetryPreconfigured"`
 }
 
 type ProgrammingLanguage string

@@ -59,10 +59,10 @@ func main() {
 			log.Printf("opentelemetry detection result: %v\n", otelDetected)
 
 			containerResults = append(containerResults, common.LanguageByContainer{
-				ContainerName:         containerName,
-				Language:              processResults[0],
-				ProcessName:           processName,
-				OpentelemetryDetected: otelDetected,
+				ContainerName:              containerName,
+				Language:                   processResults[0],
+				ProcessName:                processName,
+				OpentelemetryPreconfigured: otelDetected,
 			})
 		}
 
