@@ -44,6 +44,9 @@ make push-images
 ```
 
 ## Change log
+* v1.0.4
+    - fix log type condition
+    - change calculate app name logic
 * v1.0.3
     - Add support for opentelemetry detection
     - `nodejs`: check for existing `NODE_OPTIONS`
