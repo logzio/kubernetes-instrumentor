@@ -163,9 +163,8 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 
 func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	annotations := podTemplateSpec.GetAnnotations()
-	if annotations == nil {
-		logger.V(0).Info("No annotations found")
-		return nil
+	if annotations == nil || annotations[LogTypeAnnotation] == "" {
+		instApp.Spec.LogType = ""
 	}
 	if annotations[LogTypeAnnotation] != "" {
 		instApp.Spec.LogType = annotations[LogTypeAnnotation]
