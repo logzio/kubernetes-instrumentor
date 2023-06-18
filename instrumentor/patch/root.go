@@ -146,7 +146,7 @@ func calculateAppName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Containe
 		return currentContainer.Name
 	}
 
-	return instrumentation.ObjectMeta.OwnerReferences[0].Name
+	return instrumentation.ObjectMeta.OwnerReferences[0].Name + "-" + currentContainer.Name
 }
 
 func getApplicationFromDetectionResult(instrumentedApplication *apiV1.InstrumentedApplication) string {
