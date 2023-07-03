@@ -44,6 +44,8 @@ make push-images
 ```
 
 ## Change log
+* v1.0.5
+    - remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
 * v1.0.4
     - fix log type condition
     - change calculate app name logic
