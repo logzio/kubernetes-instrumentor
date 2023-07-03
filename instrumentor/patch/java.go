@@ -184,9 +184,20 @@ func (j *javaPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for _, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != javaToolOptionsEnvVar && env.Name != otelResourceAttributesEnvVar {
+			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != otelResourceAttributesEnvVar {
 				if env.Name == javaOptsEnvVar {
 					env.Value = strings.Replace(env.Value, fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort), "", -1)
+					// if the value is empty, don't add it
+					if env.Value == "" {
+						continue
+					}
+				}
+				if env.Name == javaToolOptionsEnvVar {
+					env.Value = strings.Replace(env.Value, fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort), "", -1)
+					// if the value is empty, don't add it
+					if env.Value == "" {
+						continue
+					}
 				}
 				newEnv = append(newEnv, env)
 			}
