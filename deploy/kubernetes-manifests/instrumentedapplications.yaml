@@ -58,6 +58,8 @@ spec:
                         type: boolean
                       containerName:
                         type: string
+                      activeServiceName:
+                        type: string
                       language:
                         enum:
                           - java
@@ -82,8 +84,6 @@ spec:
                 of InstrumentedApplication
               properties:
                 tracesInstrumented:
-                  type: boolean
-                metricsInstrumented:
                   type: boolean
                 appdetected:
                   type: boolean

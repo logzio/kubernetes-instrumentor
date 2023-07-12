@@ -23,6 +23,7 @@ type LanguageByContainer struct {
 	Language                   ProgrammingLanguage `json:"language"`
 	ProcessName                string              `json:"processName,omitempty"`
 	OpentelemetryPreconfigured bool                `json:"opentelemetryPreconfigured"`
+	ActiveServiceName          string              `json:"activeServiceName"`
 }
 
 type ProgrammingLanguage string

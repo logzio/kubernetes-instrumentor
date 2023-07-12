@@ -141,7 +141,13 @@ func calculateAppName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Containe
 	if podSpec.Annotations[LogzioServiceAnnotationName] != "" {
 		return podSpec.Annotations[LogzioServiceAnnotationName]
 	}
-
+	// should always be populated with a value or empty string
+	for _, lang := range instrumentation.Spec.Languages {
+		if lang.ContainerName == currentContainer.Name {
+			return lang.ActiveServiceName
+		}
+	}
+	// fallback for edge cases
 	if len(podSpec.Spec.Containers) > 1 {
 		return currentContainer.Name
 	}
