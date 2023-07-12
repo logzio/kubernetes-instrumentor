@@ -137,7 +137,7 @@ func getIndexOfEnv(envs []v1.EnvVar, name string) int {
 	return -1
 }
 
-func calculateAppName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
+func calculateActiveServiceName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
 	if podSpec.Annotations[LogzioServiceAnnotationName] != "" {
 		return podSpec.Annotations[LogzioServiceAnnotationName]
 	}

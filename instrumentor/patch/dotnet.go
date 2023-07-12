@@ -153,11 +153,18 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  collectorUrlEnv,
 				Value: fmt.Sprintf("http://%s:9411/api/v2/spans", LogzioMonitoringService),
 			})
-
+			// calculate active service name
+			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  serviceNameEnv,
-				Value: calculateAppName(podSpec, &container, instrumentation),
+				Value: activeServiceName,
 			})
+			// update the corresponding crd
+			for _, service := range instrumentation.Spec.Languages {
+				if service.ContainerName == container.Name {
+					service.ActiveServiceName = activeServiceName
+				}
+			}
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  exportTypeEnv,

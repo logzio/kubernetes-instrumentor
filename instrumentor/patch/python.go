@@ -127,11 +127,18 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
 				Value: fmt.Sprintf("http://%s:%d", LogzioMonitoringService, consts.OTLPHttpPort),
 			})
-
+			// calculate active service name
+			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  "OTEL_RESOURCE_ATTRIBUTES",
-				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", calculateAppName(podSpec, &container, instrumentation), PodNameEnvValue),
+				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", activeServiceName, PodNameEnvValue),
 			})
+			// update the corresponding crd
+			for _, service := range instrumentation.Spec.Languages {
+				if service.ContainerName == container.Name {
+					service.ActiveServiceName = activeServiceName
+				}
+			}
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  envOtelTracesExporter,

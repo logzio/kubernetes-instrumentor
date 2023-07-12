@@ -129,10 +129,18 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: net.JoinHostPort(LogzioMonitoringService, strconv.Itoa(consts.OTLPPort)),
 			})
 
+			// calculate active service name
+			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  nodeEnvServiceName,
-				Value: calculateAppName(podSpec, &container, instrumentation),
+				Value: activeServiceName,
 			})
+			// update the corresponding crd
+			for _, service := range instrumentation.Spec.Languages {
+				if service.ContainerName == container.Name {
+					service.ActiveServiceName = activeServiceName
+				}
+			}
 			// Check for existing node options
 			nodeOptionsExists := false
 			for idx, envVar := range container.Env {

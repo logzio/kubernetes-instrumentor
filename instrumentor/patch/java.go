@@ -137,11 +137,18 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 			} else {
 				container.Env[idx].Value = container.Env[idx].Value + " " + fmt.Sprintf(javaToolOptionsPattern, LogzioMonitoringService, consts.OTLPPort)
 			}
-
+			// calculate active service name
+			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  otelResourceAttributesEnvVar,
-				Value: fmt.Sprintf(otelResourceAttrPatteern, calculateAppName(podSpec, &container, instrumentation), PodNameEnvValue),
+				Value: fmt.Sprintf(otelResourceAttrPatteern, activeServiceName, PodNameEnvValue),
 			})
+			// update the corresponding crd
+			for _, service := range instrumentation.Spec.Languages {
+				if service.ContainerName == container.Name {
+					service.ActiveServiceName = activeServiceName
+				}
+			}
 
 			// Check if volume mount already exists
 			volumeMountExists := false

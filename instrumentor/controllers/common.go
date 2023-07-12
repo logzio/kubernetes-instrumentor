@@ -241,6 +241,15 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 			}
 			return lastErr
 		}
+		// update crd active service names due to rollback
+		for _, service := range instApp.Spec.Languages {
+			service.ActiveServiceName = ""
+		}
+		err = c.Status().Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "Error updating active service names")
+			return err
+		}
 		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
 	}
 	return nil
