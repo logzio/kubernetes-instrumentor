@@ -225,13 +225,16 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 				// Return false to indicate a retry should happen
 				return false, nil
 			}
-			isntappUpdateErr := c.Status().Update(ctx, &instApp)
+			// update crd active service names due to rollback
+			for i := range instApp.Spec.Languages {
+				instApp.Spec.Languages[i].ActiveServiceName = ""
+			}
+			isntappUpdateErr := c.Update(ctx, &instApp)
 			if isntappUpdateErr != nil {
 				logger.Error(err, "error updating instrumented status")
 				return false, nil
-			} else {
-				instApp.Status.TracesInstrumented = false
 			}
+			instApp.Status.TracesInstrumented = false
 			// Return true to indicate the function was successful
 			return true, nil
 		})
@@ -240,15 +243,6 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 				logger.Error(lastErr, "error after retrying")
 			}
 			return lastErr
-		}
-		// update crd active service names due to rollback
-		for _, service := range instApp.Spec.Languages {
-			service.ActiveServiceName = ""
-		}
-		err = c.Status().Update(ctx, &instApp)
-		if err != nil {
-			logger.Error(err, "Error updating active service names")
-			return err
 		}
 		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
 	}
@@ -283,6 +277,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			logger.Error(err, "error patching deployment / statefulset")
 			return err
 		}
+		logger.V(0).Info("service name after patching " + instApp.Spec.Languages[0].ActiveServiceName)
 		// Define an exponential backoff configuration
 		backoff := wait.Backoff{
 			Duration: time.Second * 2, // Initial delay
@@ -290,35 +285,37 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			Jitter:   0.1,             // Jitter to introduce some random variation in the delay
 			Steps:    5,               // Number of steps to retry
 		}
-		// The error variable to collect all errors encountered
-		var lastErr error
 		// Retry logic with exponential backoff
 		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
 			updateErr := c.Update(ctx, object)
 			if updateErr != nil {
 				// Save the error encountered
-				lastErr = updateErr
 				logger.Error(updateErr, "error instrumenting application, retrying...")
 				// Return false to indicate a retry should happen
 				return false, nil
 			}
-			err := c.Status().Update(ctx, &instApp)
-			if err != nil {
-				logger.Error(err, "error updating instrumented status")
+			logger.V(0).Info("service name before updating " + instApp.Spec.Languages[0].ActiveServiceName)
+			isntappUpdateErr := c.Update(ctx, &instApp)
+			logger.V(0).Info("service name after updating " + instApp.Spec.Languages[0].ActiveServiceName)
+			if isntappUpdateErr != nil {
+				logger.Error(isntappUpdateErr, "error updating custom resource instrumented status")
 				return false, nil
-			} else {
-				instApp.Status.TracesInstrumented = false
 			}
+			isntappStatusUpdateErr := c.Status().Update(ctx, &instApp)
+			if isntappStatusUpdateErr != nil {
+				logger.Error(isntappStatusUpdateErr, "error updating custom resource instrumented status")
+				return false, nil
+			}
+			instApp.Status.TracesInstrumented = true
 			// Return true to indicate the function was successful
 			return true, nil
 		})
 
-		if retryErr != nil || lastErr != nil {
-			if retryErr != nil {
-				logger.Error(lastErr, "error after retrying")
-			}
-			return lastErr
+		if retryErr != nil {
+			logger.Error(retryErr, "error after retrying")
+			return retryErr
 		}
+
 	}
 	return nil
 }

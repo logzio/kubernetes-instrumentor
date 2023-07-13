@@ -136,9 +136,9 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: activeServiceName,
 			})
 			// update the corresponding crd
-			for _, service := range instrumentation.Spec.Languages {
-				if service.ContainerName == container.Name {
-					service.ActiveServiceName = activeServiceName
+			for i := range instrumentation.Spec.Languages {
+				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
+					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
 				}
 			}
 			// Check for existing node options

@@ -144,12 +144,11 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 				Value: fmt.Sprintf(otelResourceAttrPatteern, activeServiceName, PodNameEnvValue),
 			})
 			// update the corresponding crd
-			for _, service := range instrumentation.Spec.Languages {
-				if service.ContainerName == container.Name {
-					service.ActiveServiceName = activeServiceName
+			for i := range instrumentation.Spec.Languages {
+				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
+					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
 				}
 			}
-
 			// Check if volume mount already exists
 			volumeMountExists := false
 			for _, volumeMount := range container.VolumeMounts {

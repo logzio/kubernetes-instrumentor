@@ -20,6 +20,7 @@ package patch
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
@@ -134,9 +135,12 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", activeServiceName, PodNameEnvValue),
 			})
 			// update the corresponding crd
-			for _, service := range instrumentation.Spec.Languages {
-				if service.ContainerName == container.Name {
-					service.ActiveServiceName = activeServiceName
+			for i := range instrumentation.Spec.Languages {
+				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
+					log.Println("before" + instrumentation.Spec.Languages[i].ActiveServiceName)
+					log.Println(activeServiceName)
+					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
+					log.Println("after" + instrumentation.Spec.Languages[i].ActiveServiceName)
 				}
 			}
 
