@@ -233,3 +233,25 @@ func (d *dotNetPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 	}
 	return false
 }
+
+func (d *dotNetPatcher) UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
+	var modifiedContainers []v1.Container
+	for _, container := range podSpec.Spec.Containers {
+		if shouldPatch(instrumentation, common.DotNetProgrammingLanguage, container.Name) {
+			// calculate active service name
+			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  serviceNameEnv,
+				Value: activeServiceName,
+			})
+			// update the corresponding crd
+			for i := range instrumentation.Spec.Languages {
+				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
+					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
+				}
+			}
+		}
+		modifiedContainers = append(modifiedContainers, container)
+	}
+	podSpec.Spec.Containers = modifiedContainers
+}

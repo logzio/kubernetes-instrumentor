@@ -54,6 +54,7 @@ type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	UnPatch(podSpec *v1.PodTemplateSpec) error
 	IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool
+	UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 }
 
 var patcherMap = map[common.ProgrammingLanguage]Patcher{
@@ -73,6 +74,19 @@ func ModifyObject(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrumen
 		}
 
 		p.Patch(original, instrumentation)
+	}
+
+	return nil
+}
+
+func UpdateActiveServiceName(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) error {
+	for _, l := range getLangsInResult(instrumentation) {
+		p, exists := patcherMap[l]
+		if !exists {
+			return fmt.Errorf("unable to find patcher for lang %s", l)
+		}
+
+		p.UpdateServiceNameEnv(original, instrumentation)
 	}
 
 	return nil

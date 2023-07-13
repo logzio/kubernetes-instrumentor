@@ -277,7 +277,6 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			logger.Error(err, "error patching deployment / statefulset")
 			return err
 		}
-		logger.V(0).Info("service name after patching " + instApp.Spec.Languages[0].ActiveServiceName)
 		// Define an exponential backoff configuration
 		backoff := wait.Backoff{
 			Duration: time.Second * 2, // Initial delay
@@ -294,9 +293,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 				// Return false to indicate a retry should happen
 				return false, nil
 			}
-			logger.V(0).Info("service name before updating " + instApp.Spec.Languages[0].ActiveServiceName)
 			isntappUpdateErr := c.Update(ctx, &instApp)
-			logger.V(0).Info("service name after updating " + instApp.Spec.Languages[0].ActiveServiceName)
 			if isntappUpdateErr != nil {
 				logger.Error(isntappUpdateErr, "error updating custom resource instrumented status")
 				return false, nil
@@ -316,6 +313,36 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			return retryErr
 		}
 
+	}
+	// if the app is instrumented update the active service name
+	if instrumented {
+		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
+		if err != nil {
+			logger.Error(err, "Error getting object")
+			return err
+		}
+		err = patch.UpdateActiveServiceName(podTemplateSpec, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating active service name for deployment / statefulset")
+			return err
+		}
+		updateErr := c.Update(ctx, object)
+		if updateErr != nil {
+			// Save the error encountered
+			logger.Error(updateErr, "error instrumenting application, retrying...")
+			// Return false to indicate a retry should happen
+			return updateErr
+		}
+		isntappUpdateErr := c.Update(ctx, &instApp)
+		if isntappUpdateErr != nil {
+			logger.Error(isntappUpdateErr, "error updating custom resource instrumented status")
+			return isntappUpdateErr
+		}
+		isntappStatusUpdateErr := c.Status().Update(ctx, &instApp)
+		if isntappStatusUpdateErr != nil {
+			logger.Error(isntappStatusUpdateErr, "error updating custom resource instrumented status")
+			return isntappStatusUpdateErr
+		}
 	}
 	return nil
 }

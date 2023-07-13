@@ -20,7 +20,6 @@ package patch
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
@@ -137,10 +136,7 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			// update the corresponding crd
 			for i := range instrumentation.Spec.Languages {
 				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
-					log.Println("before" + instrumentation.Spec.Languages[i].ActiveServiceName)
-					log.Println(activeServiceName)
 					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
-					log.Println("after" + instrumentation.Spec.Languages[i].ActiveServiceName)
 				}
 			}
 
@@ -205,4 +201,25 @@ func (p *pythonPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 		}
 	}
 	return false
+}
+func (p *pythonPatcher) UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
+	var modifiedContainers []v1.Container
+	for _, container := range podSpec.Spec.Containers {
+		if shouldPatch(instrumentation, common.PythonProgrammingLanguage, container.Name) {
+			// calculate active service name
+			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  "OTEL_RESOURCE_ATTRIBUTES",
+				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", activeServiceName, PodNameEnvValue),
+			})
+			// update the corresponding crd
+			for i := range instrumentation.Spec.Languages {
+				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
+					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
+				}
+			}
+		}
+		modifiedContainers = append(modifiedContainers, container)
+	}
+	podSpec.Spec.Containers = modifiedContainers
 }
