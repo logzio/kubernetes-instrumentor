@@ -138,7 +138,18 @@ func shouldPatch(instrumentation *apiV1.InstrumentedApplication, lang common.Pro
 			return true
 		}
 	}
+	return false
+}
 
+func shouldUpdateServiceName(instrumentation *apiV1.InstrumentedApplication, lang common.ProgrammingLanguage, containerName string, serviceName string) bool {
+	for _, l := range instrumentation.Spec.Languages {
+		if l.ContainerName == containerName && l.Language == lang {
+			// the active service name is different from the calculated service name
+			if serviceName != "" && l.ActiveServiceName != "" && l.ActiveServiceName != serviceName {
+				return true
+			}
+		}
+	}
 	return false
 }
 
@@ -151,19 +162,13 @@ func getIndexOfEnv(envs []v1.EnvVar, name string) int {
 	return -1
 }
 
-func calculateActiveServiceName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
+func calculateServiceName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
 	if podSpec.Annotations[LogzioServiceAnnotationName] != "" {
 		return podSpec.Annotations[LogzioServiceAnnotationName]
-	}
-	for _, lang := range instrumentation.Spec.Languages {
-		if lang.ContainerName == currentContainer.Name {
-			return lang.ActiveServiceName
-		}
 	}
 	if len(podSpec.Spec.Containers) > 1 {
 		return currentContainer.Name
 	}
-
 	return instrumentation.ObjectMeta.OwnerReferences[0].Name + "-" + currentContainer.Name
 }
 

@@ -128,7 +128,7 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: fmt.Sprintf("http://%s:%d", LogzioMonitoringService, consts.OTLPHttpPort),
 			})
 			// calculate active service name
-			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
+			activeServiceName := calculateServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  "OTEL_RESOURCE_ATTRIBUTES",
 				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", activeServiceName, PodNameEnvValue),
@@ -205,21 +205,31 @@ func (p *pythonPatcher) IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool {
 func (p *pythonPatcher) UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) {
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
-		if shouldPatch(instrumentation, common.PythonProgrammingLanguage, container.Name) {
-			// calculate active service name
-			activeServiceName := calculateActiveServiceName(podSpec, &container, instrumentation)
-			container.Env = append(container.Env, v1.EnvVar{
-				Name:  "OTEL_RESOURCE_ATTRIBUTES",
-				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", activeServiceName, PodNameEnvValue),
-			})
-			// update the corresponding crd
-			for i := range instrumentation.Spec.Languages {
-				if instrumentation.Spec.Languages[i].ContainerName == container.Name {
-					instrumentation.Spec.Languages[i].ActiveServiceName = activeServiceName
+		serviceName := calculateServiceName(podSpec, &container, instrumentation)
+		if shouldUpdateServiceName(instrumentation, common.PythonProgrammingLanguage, container.Name, serviceName) {
+			// remove old env
+			var newEnv []v1.EnvVar
+			for _, env := range container.Env {
+				if env.Name != "OTEL_RESOURCE_ATTRIBUTES" {
+					newEnv = append(newEnv, env)
 				}
 			}
+			// calculate active service name
+			newEnv = append(newEnv, v1.EnvVar{
+				Name:  "OTEL_RESOURCE_ATTRIBUTES",
+				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", serviceName, PodNameEnvValue),
+			})
+			container.Env = newEnv
+			// update the corresponding crd
+			for j := range instrumentation.Spec.Languages {
+				if instrumentation.Spec.Languages[j].ContainerName == container.Name {
+					instrumentation.Spec.Languages[j].ActiveServiceName = serviceName
+				}
+			}
+			modifiedContainers = append(modifiedContainers, container)
 		}
-		modifiedContainers = append(modifiedContainers, container)
 	}
-	podSpec.Spec.Containers = modifiedContainers
+	if len(modifiedContainers) > 0 {
+		podSpec.Spec.Containers = modifiedContainers
+	}
 }
