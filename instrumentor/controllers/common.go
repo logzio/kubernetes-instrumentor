@@ -215,19 +215,18 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		if updateErr != nil {
 			// Save the error encountered
 			logger.Error(updateErr, "error instrumenting application")
-			// Return false to indicate a retry should happen
 			return updateErr
 		}
 		// update crd active service names due to rollback
 		for i := range instApp.Spec.Languages {
 			instApp.Spec.Languages[i].ActiveServiceName = ""
 		}
-		instApp.Status.TracesInstrumented = false
 		err = c.Update(ctx, &instApp)
 		if err != nil {
 			logger.Error(err, "error updating instrumented application spec")
 			return err
 		}
+		instApp.Status.TracesInstrumented = false
 		err = c.Status().Update(ctx, &instApp)
 		if err != nil {
 			logger.Error(err, "error updating instrumented application status")
@@ -281,10 +280,10 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			logger.Error(err, "error patching deployment / statefulset")
 			return err
 		}
-		updateErr := c.Update(ctx, object)
-		if updateErr != nil {
-			logger.Error(updateErr, "error instrumenting application ")
-			return updateErr
+		err = c.Update(ctx, object)
+		if err != nil {
+			logger.Error(err, "error instrumenting application ")
+			return err
 		}
 		err = c.Update(ctx, &instApp)
 		if err != nil {
