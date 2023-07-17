@@ -16,6 +16,8 @@ The following will be deployed:
 The `logzio-instrumetor` microservice can be deployed to your cluster to discover applications, inject opentelemetry instrumentation, add log types and more. You can control the discovery process with annotations.
 - `logz.io/traces_instrument = true` - will instrument the application with opentelemetry
 - `logz.io/traces_instrument = rollback` - will delete the opentelemetry instrumentation
+- `logz.io/service-name = <string>` - will set active service name for your opentelemetry instrumentation
+- `logz.io/application_type = <string>` - will set log type to send to logz.io (**dependent on logz.io fluentd helm chart**)
 - `logz.io/skip = true` - will skip the application from instrumentation or app detection
 
 ### Configuration for `logzio-instrumentor` container
@@ -46,6 +48,9 @@ make push-images
 ## Change log
 * v1.0.5
     - remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
+    - fix crd client updates
+    - added `ActiveServiceName` to custom resource definition
+    - handle `ActiveServiceName` updates
 * v1.0.4
     - fix log type condition
     - change calculate app name logic
