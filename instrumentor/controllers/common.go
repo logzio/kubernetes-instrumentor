@@ -158,6 +158,11 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 }
 
 func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	err := c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+	if err != nil {
+		logger.Error(err, "Error getting instrumented application")
+		return err
+	}
 	annotations := podTemplateSpec.GetAnnotations()
 	if annotations == nil || annotations[LogTypeAnnotation] == "" {
 		instApp.Spec.LogType = ""
@@ -165,7 +170,7 @@ func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, in
 	if annotations[LogTypeAnnotation] != "" {
 		instApp.Spec.LogType = annotations[LogTypeAnnotation]
 	}
-	err := c.Update(ctx, &instApp)
+	err = c.Update(ctx, &instApp)
 	if err != nil {
 		logger.Error(err, "error updating InstrumentedApp object with log type")
 		return err
@@ -311,15 +316,15 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			logger.Error(err, "error updating active service name for deployment / statefulset")
 			return err
 		}
-		updateErr := c.Update(ctx, object)
-		if updateErr != nil {
-			logger.Error(updateErr, "error instrumenting application")
-			return updateErr
+		err = c.Update(ctx, object)
+		if err != nil {
+			logger.Error(err, "error instrumenting application")
+			return err
 		}
-		isntappUpdateErr := c.Update(ctx, &instApp)
-		if isntappUpdateErr != nil {
-			logger.Error(isntappUpdateErr, "error updating custom resource instrumented status")
-			return isntappUpdateErr
+		err = c.Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating custom resource instrumented status")
+			return err
 		}
 	}
 	return nil
