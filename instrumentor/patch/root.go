@@ -26,7 +26,6 @@ import (
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -194,24 +193,6 @@ func IsDetected(ctx context.Context, original *v1.PodTemplateSpec, instrumentedA
 	}
 
 	return isDetected, nil
-}
-
-func ModifyObjectWithAnnotation(ctx context.Context, detectedApplication *apiV1.InstrumentedApplication, object client.Object) error {
-	app := getApplicationFromDetectionResult(detectedApplication)
-	if app != "" {
-		p, exists := annotationPatcherMap[app]
-		if !exists {
-			return fmt.Errorf("unable to find patcher for app %s", app)
-		}
-
-		err := p.Patch(ctx, detectedApplication, object)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func init() {
