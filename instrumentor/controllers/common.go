@@ -212,15 +212,15 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		logger.V(0).Info("Rolling back instrumentation", "object", object)
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
-			logger.Error(err, "Error unpatching deployment / statefulset")
+			logger.Error(err, "Error unpatching resource")
 			return err
 		}
 		logger.V(0).Info("updating object after rollback", "object", object)
-		updateErr := c.Update(ctx, object)
-		if updateErr != nil {
+		err = c.Update(ctx, object)
+		if err != nil {
 			// Save the error encountered
-			logger.Error(updateErr, "error instrumenting application")
-			return updateErr
+			logger.Error(err, "error instrumenting application")
+			return err
 		}
 		// update crd active service names due to rollback
 		for i := range instApp.Spec.Languages {
@@ -282,7 +282,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, &instApp)
 		if err != nil {
-			logger.Error(err, "error patching deployment / statefulset")
+			logger.Error(err, "error patching resource")
 			return err
 		}
 		err = c.Update(ctx, object)
@@ -313,7 +313,7 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 		}
 		err = patch.UpdateActiveServiceName(podTemplateSpec, &instApp)
 		if err != nil {
-			logger.Error(err, "error updating active service name for deployment / statefulset")
+			logger.Error(err, "error updating active service name for resource")
 			return err
 		}
 		err = c.Update(ctx, object)
