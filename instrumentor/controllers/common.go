@@ -21,9 +21,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"strings"
-	"time"
-
 	"github.com/go-logr/logr"
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common/consts"
@@ -31,10 +28,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
 )
 
 const (
@@ -120,7 +117,6 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		return errors.New("found more than one InstrumentedApp")
 	}
 	// if InstrumentedApp found - run process
-	// if lang not detected - stay in function and check for app detection
 	instApp := instApps.Items[0]
 	if instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
 		return nil
@@ -162,6 +158,11 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 }
 
 func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	err := c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+	if err != nil {
+		logger.Error(err, "Error getting instrumented application")
+		return err
+	}
 	annotations := podTemplateSpec.GetAnnotations()
 	if annotations == nil || annotations[LogTypeAnnotation] == "" {
 		instApp.Spec.LogType = ""
@@ -169,7 +170,7 @@ func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, in
 	if annotations[LogTypeAnnotation] != "" {
 		instApp.Spec.LogType = annotations[LogTypeAnnotation]
 	}
-	err := c.Update(ctx, &instApp)
+	err = c.Update(ctx, &instApp)
 	if err != nil {
 		logger.Error(err, "error updating InstrumentedApp object with log type")
 		return err
@@ -178,6 +179,11 @@ func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, in
 }
 
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	err := c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+	if err != nil {
+		logger.Error(err, "Error getting instrumented application")
+		return err
+	}
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "Error computing instrumented status")
@@ -193,6 +199,11 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 	}
 	annotations := podTemplateSpec.GetAnnotations()
 	if instrumented && strings.ToLower(annotations[TracesInstrumentAnnotation]) == "rollback" {
+		err = c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+		if err != nil {
+			logger.Error(err, "Error getting instrumented application")
+			return err
+		}
 		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
 		if err != nil {
 			logger.Error(err, "Error getting object")
@@ -201,45 +212,30 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		logger.V(0).Info("Rolling back instrumentation", "object", object)
 		err = patch.RollbackPatch(podTemplateSpec, &instApp)
 		if err != nil {
-			logger.Error(err, "Error unpatching deployment / statefulset")
+			logger.Error(err, "Error unpatching resource")
 			return err
 		}
-
-		// Define an exponential backoff configuration
-		backoff := wait.Backoff{
-			Duration: time.Second * 2, // Initial delay
-			Factor:   2,               // Factor by which the delay is exponentially increased
-			Jitter:   0.1,             // Jitter to introduce some random variation in the delay
-			Steps:    5,               // Number of steps to retry
-		}
-		// The error variable to collect all errors encountered
-		var lastErr error
 		logger.V(0).Info("updating object after rollback", "object", object)
-		// Retry logic with exponential backoff
-		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			updateErr := c.Update(ctx, object)
-			if updateErr != nil {
-				// Save the error encountered
-				lastErr = errors.New(updateErr.Error())
-				logger.Error(updateErr, "error instrumenting application, retrying...")
-				// Return false to indicate a retry should happen
-				return false, nil
-			}
-			isntappUpdateErr := c.Status().Update(ctx, &instApp)
-			if isntappUpdateErr != nil {
-				logger.Error(err, "error updating instrumented status")
-				return false, nil
-			} else {
-				instApp.Status.TracesInstrumented = false
-			}
-			// Return true to indicate the function was successful
-			return true, nil
-		})
-		if retryErr != nil || lastErr != nil {
-			if retryErr != nil {
-				logger.Error(lastErr, "error after retrying")
-			}
-			return lastErr
+		err = c.Update(ctx, object)
+		if err != nil {
+			// Save the error encountered
+			logger.Error(err, "error instrumenting application")
+			return err
+		}
+		// update crd active service names due to rollback
+		for i := range instApp.Spec.Languages {
+			instApp.Spec.Languages[i].ActiveServiceName = ""
+		}
+		err = c.Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating instrumented application spec")
+			return err
+		}
+		instApp.Status.TracesInstrumented = false
+		err = c.Status().Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating instrumented application status")
+			return err
 		}
 		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
 	}
@@ -247,12 +243,22 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 }
 
 func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	err := c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+	if err != nil {
+		logger.Error(err, "Error getting instrumented application")
+		return err
+	}
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, &instApp)
 	if err != nil {
 		logger.Error(err, "error computing instrumented status")
 		return err
 	}
 	if instrumented != instApp.Status.TracesInstrumented {
+		err = c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+		if err != nil {
+			logger.Error(err, "Error getting instrumented application")
+			return err
+		}
 		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
 		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, &instApp)
@@ -268,47 +274,57 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 			logger.Error(err, "Error getting object")
 			return err
 		}
+		err = c.Get(ctx, client.ObjectKeyFromObject(&instApp), &instApp)
+		if err != nil {
+			logger.Error(err, "Error getting instrumented application")
+			return err
+		}
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, &instApp)
 		if err != nil {
-			logger.Error(err, "error patching deployment / statefulset")
+			logger.Error(err, "error patching resource")
 			return err
 		}
-		// Define an exponential backoff configuration
-		backoff := wait.Backoff{
-			Duration: time.Second * 2, // Initial delay
-			Factor:   2,               // Factor by which the delay is exponentially increased
-			Jitter:   0.1,             // Jitter to introduce some random variation in the delay
-			Steps:    5,               // Number of steps to retry
+		err = c.Update(ctx, object)
+		if err != nil {
+			logger.Error(err, "error instrumenting application ")
+			return err
 		}
-		// The error variable to collect all errors encountered
-		var lastErr error
-		// Retry logic with exponential backoff
-		retryErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			updateErr := c.Update(ctx, object)
-			if updateErr != nil {
-				// Save the error encountered
-				lastErr = updateErr
-				logger.Error(updateErr, "error instrumenting application, retrying...")
-				// Return false to indicate a retry should happen
-				return false, nil
-			}
-			err := c.Status().Update(ctx, &instApp)
-			if err != nil {
-				logger.Error(err, "error updating instrumented status")
-				return false, nil
-			} else {
-				instApp.Status.TracesInstrumented = false
-			}
-			// Return true to indicate the function was successful
-			return true, nil
-		})
+		err = c.Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating custom resource instrumented status")
+			return err
+		}
+		// instApp.Status.TracesInstrumented is a part of the status in the custom resource definition
+		instApp.Status.TracesInstrumented = true
+		err = c.Status().Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error computing traces instrumented status")
+			return err
+		}
 
-		if retryErr != nil || lastErr != nil {
-			if retryErr != nil {
-				logger.Error(lastErr, "error after retrying")
-			}
-			return lastErr
+	}
+	// if the app is instrumented update the active service name
+	if instrumented {
+		err = c.Get(ctx, client.ObjectKey{Namespace: object.GetNamespace(), Name: object.GetName()}, object)
+		if err != nil {
+			logger.Error(err, "Error getting object")
+			return err
+		}
+		err = patch.UpdateActiveServiceName(podTemplateSpec, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating active service name for resource")
+			return err
+		}
+		err = c.Update(ctx, object)
+		if err != nil {
+			logger.Error(err, "error instrumenting application")
+			return err
+		}
+		err = c.Update(ctx, &instApp)
+		if err != nil {
+			logger.Error(err, "error updating custom resource instrumented status")
+			return err
 		}
 	}
 	return nil

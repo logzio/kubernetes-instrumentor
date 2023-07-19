@@ -63,6 +63,7 @@ func main() {
 				Language:                   processResults[0],
 				ProcessName:                processName,
 				OpentelemetryPreconfigured: otelDetected,
+				ActiveServiceName:          "",
 			})
 		}
 

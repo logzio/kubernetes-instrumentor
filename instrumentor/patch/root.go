@@ -26,7 +26,6 @@ import (
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
 	"github.com/logzio/kubernetes-instrumentor/common"
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -54,6 +53,7 @@ type Patcher interface {
 	Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 	UnPatch(podSpec *v1.PodTemplateSpec) error
 	IsTracesInstrumented(podSpec *v1.PodTemplateSpec) bool
+	UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication)
 }
 
 var patcherMap = map[common.ProgrammingLanguage]Patcher{
@@ -73,6 +73,19 @@ func ModifyObject(original *v1.PodTemplateSpec, instrumentation *apiV1.Instrumen
 		}
 
 		p.Patch(original, instrumentation)
+	}
+
+	return nil
+}
+
+func UpdateActiveServiceName(original *v1.PodTemplateSpec, instrumentation *apiV1.InstrumentedApplication) error {
+	for _, l := range getLangsInResult(instrumentation) {
+		p, exists := patcherMap[l]
+		if !exists {
+			return fmt.Errorf("unable to find patcher for lang %s", l)
+		}
+
+		p.UpdateServiceNameEnv(original, instrumentation)
 	}
 
 	return nil
@@ -124,7 +137,18 @@ func shouldPatch(instrumentation *apiV1.InstrumentedApplication, lang common.Pro
 			return true
 		}
 	}
+	return false
+}
 
+func shouldUpdateServiceName(instrumentation *apiV1.InstrumentedApplication, lang common.ProgrammingLanguage, containerName string, serviceName string) bool {
+	for _, l := range instrumentation.Spec.Languages {
+		if l.ContainerName == containerName && l.Language == lang {
+			// the active service name is different from the calculated service name
+			if serviceName != "" && l.ActiveServiceName != "" && l.ActiveServiceName != serviceName {
+				return true
+			}
+		}
+	}
 	return false
 }
 
@@ -137,15 +161,13 @@ func getIndexOfEnv(envs []v1.EnvVar, name string) int {
 	return -1
 }
 
-func calculateAppName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
+func calculateServiceName(podSpec *v1.PodTemplateSpec, currentContainer *v1.Container, instrumentation *apiV1.InstrumentedApplication) string {
 	if podSpec.Annotations[LogzioServiceAnnotationName] != "" {
 		return podSpec.Annotations[LogzioServiceAnnotationName]
 	}
-
 	if len(podSpec.Spec.Containers) > 1 {
 		return currentContainer.Name
 	}
-
 	return instrumentation.ObjectMeta.OwnerReferences[0].Name + "-" + currentContainer.Name
 }
 
@@ -171,24 +193,6 @@ func IsDetected(ctx context.Context, original *v1.PodTemplateSpec, instrumentedA
 	}
 
 	return isDetected, nil
-}
-
-func ModifyObjectWithAnnotation(ctx context.Context, detectedApplication *apiV1.InstrumentedApplication, object client.Object) error {
-	app := getApplicationFromDetectionResult(detectedApplication)
-	if app != "" {
-		p, exists := annotationPatcherMap[app]
-		if !exists {
-			return fmt.Errorf("unable to find patcher for app %s", app)
-		}
-
-		err := p.Patch(ctx, detectedApplication, object)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func init() {
