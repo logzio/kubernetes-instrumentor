@@ -29,11 +29,15 @@ import (
 )
 
 const (
-	pythonVolumeName       = "agentdir-python"
-	pythonMountPath        = "/otel-auto-instrumentation"
-	envOtelTracesExporter  = "OTEL_TRACES_EXPORTER"
-	envValOtelHttpExporter = "otlp_proto_http"
-	envLogCorrelation      = "OTEL_PYTHON_LOG_CORRELATION"
+	pythonVolumeName                   = "agentdir-python"
+	pythonMountPath                    = "/otel-auto-instrumentation"
+	envOtelTracesExporter              = "OTEL_TRACES_EXPORTER"
+	envOtelMetricsExporter             = "OTEL_METRICS_EXPORTER"
+	envValOtelOtlpExporter             = "otlp"
+	envLogCorrelation                  = "OTEL_PYTHON_LOG_CORRELATION"
+	envOtelExporterOTLPTracesProtocol  = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"
+	envOtelExporterOTLPMetricsProtocol = "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL"
+	httpProtoProtocol                  = "http/protobuf"
 )
 
 var python = &pythonPatcher{}
@@ -124,7 +128,17 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+				Name:  envOtelExporterOTLPTracesProtocol,
+				Value: httpProtoProtocol,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  envOtelExporterOTLPMetricsProtocol,
+				Value: httpProtoProtocol,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  "OTEL_EXPORTER_OTLP_ENDPOINT",
 				Value: fmt.Sprintf("http://%s:%d", LogzioMonitoringService, consts.OTLPHttpPort),
 			})
 			// calculate active service name
@@ -142,7 +156,12 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  envOtelTracesExporter,
-				Value: envValOtelHttpExporter,
+				Value: envValOtelOtlpExporter,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  envOtelMetricsExporter,
+				Value: envValOtelOtlpExporter,
 			})
 
 			// Check if volume mount already exists
@@ -185,7 +204,7 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for i, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter {
+			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter && env.Name != envOtelExporterOTLPTracesProtocol && env.Name != envOtelExporterOTLPMetricsProtocol && env.Name != envOtelMetricsExporter && env.Name != httpProtoProtocol {
 				newEnv = append(newEnv, env)
 			}
 		}

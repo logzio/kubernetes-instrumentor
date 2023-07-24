@@ -1,4 +1,4 @@
-TAG ?= v1.0.5
+TAG ?= v1.0.6
 
 
 .PHONY: install-tools

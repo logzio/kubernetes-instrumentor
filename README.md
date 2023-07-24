@@ -46,6 +46,10 @@ make push-images
 ```
 
 ## Change log
+* v1.0.6
+    - Use pointers for instapp
+    - Minimize k8s client `Get()` calls to avoid mismatching objects while the dynamic update
+    - Add metrics env vars to Python instrumentation (it breaks otherwise)
 * v1.0.5
     - remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
     - fix crd client updates
