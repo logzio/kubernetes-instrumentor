@@ -79,8 +79,6 @@ func extractDependencies(pid int) map[string]string {
 	allDeps := make(map[string]string)
 	for _, filepath := range matchingFiles {
 		handler, ok := files[path.Base(filepath)]
-		log.Println(filepath)
-		log.Println(ok)
 		if ok {
 			for k, v := range handler(filepath) {
 				allDeps[k] = v
