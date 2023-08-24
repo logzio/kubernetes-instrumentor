@@ -57,11 +57,12 @@ func otelInCmdLine(cmdLine string) bool {
 }
 
 func otelInDeps(deps map[string]string) bool {
+	detected := false
 	for dep := range deps {
 		if strings.Contains(dep, opentelemetryStr) || strings.Contains(dep, heliosStr) {
-			log.Printf("Found at least one OpenTelemetry dependency: %s", dep)
-			return true
+			log.Printf("Found opentelemetry dependency: %s", dep)
+			detected = true
 		}
 	}
-	return false
+	return detected
 }

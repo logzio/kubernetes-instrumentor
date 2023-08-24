@@ -80,7 +80,6 @@ func main() {
 		ApplicationByContainer: detectedAppResults,
 	}
 
-	log.Println(detectionResult)
 	err := publishDetectionResult(detectionResult)
 	if err != nil {
 		log.Fatalf("could not publish detection result, error: %s\n", err)
