@@ -20,6 +20,7 @@ package inspectors
 
 import (
 	"github.com/logzio/kubernetes-instrumentor/detectors/process"
+	"log"
 	"strings"
 )
 
@@ -58,6 +59,7 @@ func otelInCmdLine(cmdLine string) bool {
 func otelInDeps(deps map[string]string) bool {
 	for dep := range deps {
 		if strings.Contains(dep, opentelemetryStr) || strings.Contains(dep, heliosStr) {
+			log.Printf("Found at least one OpenTelemetry dependency: %s", dep)
 			return true
 		}
 	}

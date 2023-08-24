@@ -48,11 +48,9 @@ func main() {
 		}
 
 		processResults, processName := langDetector.DetectLanguage(processes)
-		log.Printf("detection result: %s\n", processResults)
+		log.Printf("language detection result: %s\n", processResults)
 
 		detectedAppName := appDetector.DetectApplication(processes)
-		log.Printf("detection app result: %s\n", detectedAppName)
-
 		if len(processResults) > 0 {
 			// OpenTelemetry detection if language detected
 			otelDetected := opentelemetryDetector.DetectApplication(processes)
@@ -68,7 +66,6 @@ func main() {
 		}
 
 		// Only one detected app is relevant (the rest is duplicated)
-		log.Println(detectedAppName)
 		if len(detectedAppName) > 0 {
 			detectedAppResults = append(detectedAppResults, common.ApplicationByContainer{
 				ContainerName: containerName,

@@ -49,7 +49,6 @@ func findFiles(rootPath string, targetFiles []string) []string {
 
 	for _, file := range files {
 		fullPath := path.Join(rootPath, file.Name())
-
 		if file.IsDir() {
 			foundFiles = append(foundFiles, findFiles(fullPath, targetFiles)...)
 		} else {
@@ -64,13 +63,12 @@ func findFiles(rootPath string, targetFiles []string) []string {
 }
 
 func extractDependencies(pid int) map[string]string {
-	basepath := path.Join("/proc", strconv.Itoa(pid), "root", "path-to-app")
-
+	basepath := path.Join("/proc", strconv.Itoa(pid), "root")
 	// List of target dependency files
 	targetFiles := []string{"go.mod", "package.json", "requirements.txt"}
-
 	// Find all matching files recursively
 	matchingFiles := findFiles(basepath, targetFiles)
+	log.Println("Found dependency files: ", matchingFiles)
 
 	files := map[string]func(string) map[string]string{
 		"go.mod":           extractGoDeps,
@@ -81,6 +79,8 @@ func extractDependencies(pid int) map[string]string {
 	allDeps := make(map[string]string)
 	for _, filepath := range matchingFiles {
 		handler, ok := files[path.Base(filepath)]
+		log.Println(filepath)
+		log.Println(ok)
 		if ok {
 			for k, v := range handler(filepath) {
 				allDeps[k] = v
@@ -248,7 +248,6 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, error) 
 			}
 		}
 	}
-
-	log.Println("No processes found")
+	log.Printf("Detected containers: %+v", detectedContainers)
 	return detectedContainers, nil
 }
