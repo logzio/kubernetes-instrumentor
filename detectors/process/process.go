@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"github.com/fntlnz/mountinfo"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -42,7 +41,7 @@ type Details struct {
 func findFiles(rootPath string, targetFiles []string) []string {
 	var foundFiles []string
 
-	files, err := ioutil.ReadDir(rootPath)
+	files, err := os.ReadDir(rootPath)
 	if err != nil {
 		return foundFiles
 	}
@@ -71,7 +70,6 @@ func extractDependencies(pid int) map[string]string {
 	log.Println("Found dependency files: ", matchingFiles)
 
 	files := map[string]func(string) map[string]string{
-		"go.mod":           extractGoDeps,
 		"package.json":     extractNodejsDeps,
 		"requirements.txt": extractPythonDeps,
 	}
@@ -89,37 +87,9 @@ func extractDependencies(pid int) map[string]string {
 	return allDeps
 }
 
-func extractGoDeps(filepath string) map[string]string {
-	deps := make(map[string]string)
-	data, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return deps
-	}
-
-	lines := strings.Split(string(data), "\n")
-	insideRequire := false
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "require (" {
-			insideRequire = true
-			continue
-		}
-		if insideRequire && line == ")" {
-			break
-		}
-		if insideRequire {
-			parts := strings.Fields(line)
-			if len(parts) == 2 {
-				deps[parts[0]] = parts[1]
-			}
-		}
-	}
-	return deps
-}
-
 func extractNodejsDeps(filepath string) map[string]string {
 	deps := make(map[string]string)
-	data, err := ioutil.ReadFile(filepath)
+	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return deps
 	}
@@ -139,7 +109,7 @@ func extractNodejsDeps(filepath string) map[string]string {
 
 func extractPythonDeps(filepath string) map[string]string {
 	deps := make(map[string]string)
-	data, err := ioutil.ReadFile(filepath)
+	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return deps
 	}
