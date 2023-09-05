@@ -20,6 +20,7 @@ package process
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/fntlnz/mountinfo"
 	"io"
@@ -29,6 +30,12 @@ import (
 	"strconv"
 	"strings"
 )
+
+// PackageReference for .csproj deps
+type PackageReference struct {
+	Include string `xml:"Include,attr"`
+	Version string `xml:"Version,attr"`
+}
 
 type Details struct {
 	ProcessID    int
@@ -52,7 +59,9 @@ func findFiles(rootPath string, targetFiles []string) []string {
 			foundFiles = append(foundFiles, findFiles(fullPath, targetFiles)...)
 		} else {
 			for _, target := range targetFiles {
-				if file.Name() == target {
+				if target == ".csproj" && strings.HasSuffix(file.Name(), ".csproj") {
+					foundFiles = append(foundFiles, fullPath)
+				} else if file.Name() == target {
 					foundFiles = append(foundFiles, fullPath)
 				}
 			}
@@ -64,7 +73,7 @@ func findFiles(rootPath string, targetFiles []string) []string {
 func extractDependencies(pid int) map[string]string {
 	basepath := path.Join("/proc", strconv.Itoa(pid), "root")
 	// List of target dependency files
-	targetFiles := []string{"go.mod", "package.json", "requirements.txt"}
+	targetFiles := []string{"package.json", "requirements.txt", "Startup.cs", ".csproj"}
 	// Find all matching files recursively
 	matchingFiles := findFiles(basepath, targetFiles)
 	log.Println("Found dependency files: ", matchingFiles)
@@ -72,6 +81,8 @@ func extractDependencies(pid int) map[string]string {
 	files := map[string]func(string) map[string]string{
 		"package.json":     extractNodejsDeps,
 		"requirements.txt": extractPythonDeps,
+		"Startup.cs":       extractDotNetDeps,
+		".csproj":          extractDotNetCsProjDeps,
 	}
 
 	allDeps := make(map[string]string)
@@ -125,6 +136,45 @@ func extractPythonDeps(filepath string) map[string]string {
 			deps[parts[0]] = parts[1]
 		}
 	}
+	return deps
+}
+
+func extractDotNetDeps(filepath string) map[string]string {
+	deps := make(map[string]string)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return deps
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "services.Add") {
+			parts := strings.Split(line, ".")
+			if len(parts) > 1 {
+				serviceName := parts[len(parts)-1]
+				// Just marking the dependency as detected, without a version
+				deps[serviceName] = "detected"
+			}
+		}
+	}
+	return deps
+}
+
+func extractDotNetCsProjDeps(filepath string) map[string]string {
+	deps := make(map[string]string)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return deps
+	}
+
+	var references []PackageReference
+	xml.Unmarshal(data, &references)
+
+	for _, ref := range references {
+		deps[ref.Include] = ref.Version
+	}
+
 	return deps
 }
 
