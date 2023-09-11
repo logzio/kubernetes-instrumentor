@@ -46,6 +46,8 @@ make push-images
 ```
 
 ## Change log
+* v1.0.7
+    - Add opentelemetry dependency detection in dependency files for: `nodejs`, `python`, `dotnet`  
 * v1.0.6
     - Use pointers for instapp
     - Minimize k8s client `Get()` calls to avoid mismatching objects while the dynamic update
