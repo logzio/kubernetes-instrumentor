@@ -1,4 +1,4 @@
-name: Build and deploy instrumentor and detector image to dockerhub
+name: Build and deploy agents images to dockerhub
 on:
   release:
     types: [published]
