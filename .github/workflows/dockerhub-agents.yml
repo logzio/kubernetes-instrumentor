@@ -22,3 +22,51 @@ jobs:
         run: TAG=latest make build-images-agents
       - name: Push images latest
         run: TAG=latest make push-images-agents
+      # AWS ECR Public Login
+      - name: Login to AWS ECR Public
+        uses: docker/login-action@v3
+        with:
+          registry: public.ecr.aws
+          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # Build and push images to AWS ECR Public
+      - name: Build and push images to AWS ECR Public release
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          AWS_ECR_REGISTRY=public.ecr.aws/logzio
+        
+          # Dotnet Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-dotnet:$TAG -f agents/dotnet/Dockerfile agents/dotnet
+          docker push $AWS_ECR_REGISTRY/otel-agent-dotnet:$TAG
+
+          # Java Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-java:$TAG -f agents/java/Dockerfile agents/java
+          docker push $AWS_ECR_REGISTRY/otel-agent-java:$TAG
+
+          # Node.js Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-nodejs:$TAG -f agents/nodejs/Dockerfile agents/nodejs
+          docker push $AWS_ECR_REGISTRY/otel-agent-nodejs:$TAG
+
+          # Python Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-python:$TAG -f agents/python/Dockerfile agents/python
+          docker push $AWS_ECR_REGISTRY/otel-agent-python:$TAG
+      - name: Build and push images to AWS ECR Public latest
+        run: |
+          TAG=latest
+          AWS_ECR_REGISTRY=public.ecr.aws/logzio
+          
+          # Dotnet Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-dotnet:$TAG -f agents/dotnet/Dockerfile agents/dotnet
+          docker push $AWS_ECR_REGISTRY/otel-agent-dotnet:$TAG
+
+          # Java Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-java:$TAG -f agents/java/Dockerfile agents/java
+          docker push $AWS_ECR_REGISTRY/otel-agent-java:$TAG
+
+          # Node.js Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-nodejs:$TAG -f agents/nodejs/Dockerfile agents/nodejs
+          docker push $AWS_ECR_REGISTRY/otel-agent-nodejs:$TAG
+
+          # Python Agent
+          docker build -t $AWS_ECR_REGISTRY/otel-agent-python:$TAG -f agents/python/Dockerfile agents/python
+          docker push $AWS_ECR_REGISTRY/otel-agent-python:$TAG

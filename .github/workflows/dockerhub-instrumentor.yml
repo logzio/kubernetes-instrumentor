@@ -22,53 +22,31 @@ jobs:
         run: TAG=latest make build-images
       - name: Push images latest
         run: TAG=latest make push-images
-      # Login to GitHub Container Registry
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+      # AWS ECR Public Login
+      - name: Login to AWS ECR Public
+        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      # Build and push agent images to GitHub Packages
-      - name: Build and push Docker images to GitHub Packages release
+          registry: public.ecr.aws
+          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # Build and push agent images to aws public ecr
+      - name: Build and push Docker images to aws ecr release
         run: |
           TAG=${{ github.event.release.tag_name }}
-          # Dotnet Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-dotnet:$TAG -f agents/dotnet/Dockerfile agents/dotnet
-          docker push ghcr.io/${{ github.repository }}/otel-agent-dotnet:$TAG          
-          # Java Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-java:$TAG -f agents/java/Dockerfile agents/java
-          docker push ghcr.io/${{ github.repository }}/otel-agent-java:$TAG
-          # Node.js Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-nodejs:$TAG -f agents/nodejs/Dockerfile agents/nodejs
-          docker push ghcr.io/${{ github.repository }}/otel-agent-nodejs:$TAG
-          # Python Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-python:$TAG -f agents/python/Dockerfile agents/python
-          docker push ghcr.io/${{ github.repository }}/otel-agent-python:$TAG
-          # instrumentor
-          docker build -t ghcr.io/${{ github.repository }}/instrumentation-detector:$TAG -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
-          docker push ghcr.io/${{ github.repository }}/instrumentation-detector:$TAG
-          docker build -t ghcr.io/${{ github.repository }}/instrumentor:$TAG . --build-arg SERVICE_NAME=instrumentor
-          docker push ghcr.io/${{ github.repository }}/instrumentor:$TAG
-
-      # Build and push images to GitHub Packages
-      - name: Build and push Docker images to GitHub Packages latest
+          AWS_ECR_REGISTRY=public.ecr.aws/logzio
+          # build
+          docker build -t $AWS_ECR_REGISTRY/instrumentation-detector:$TAG -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
+          docker build -t $AWS_ECR_REGISTRY/instrumentor:$TAG . --build-arg SERVICE_NAME=instrumentor
+          # push 
+          docker push $AWS_ECR_REGISTRY/instrumentation-detector:$TAG
+          docker push $AWS_ECR_REGISTRY/instrumentor:$TAG
+      - name: Build and push Docker images to aws ecr release
         run: |
           TAG=latest
-          # Dotnet Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-dotnet:$TAG -f agents/dotnet/Dockerfile agents/dotnet
-          docker push ghcr.io/${{ github.repository }}/otel-agent-dotnet:$TAG
-          # Java Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-java:$TAG -f agents/java/Dockerfile agents/java
-          docker push ghcr.io/${{ github.repository }}/otel-agent-java:$TAG
-          # Node.js Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-nodejs:$TAG -f agents/nodejs/Dockerfile agents/nodejs
-          docker push ghcr.io/${{ github.repository }}/otel-agent-nodejs:$TAG
-          # Python Agent
-          docker build -t ghcr.io/${{ github.repository }}/otel-agent-python:$TAG -f agents/python/Dockerfile agents/python
-          docker push ghcr.io/${{ github.repository }}/otel-agent-python:$TAG
-          # instrumentor
-          docker build -t ghcr.io/${{ github.repository }}/instrumentation-detector:$TAG -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
-          docker push ghcr.io/${{ github.repository }}/instrumentation-detector:$TAG
-          docker build -t ghcr.io/${{ github.repository }}/instrumentor:$TAG . --build-arg SERVICE_NAME=instrumentor
-          docker push ghcr.io/${{ github.repository }}/instrumentor:$TAG
+          AWS_ECR_REGISTRY=public.ecr.aws/your-ecr-registry-name
+          # build
+          docker build -t $AWS_ECR_REGISTRY/instrumentation-detector:$TAG -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
+          docker build -t $AWS_ECR_REGISTRY/instrumentor:$TAG . --build-arg SERVICE_NAME=instrumentor
+          # push 
+          docker push $AWS_ECR_REGISTRY/instrumentation-detector:$TAG
+          docker push $AWS_ECR_REGISTRY/instrumentor:$TAG
