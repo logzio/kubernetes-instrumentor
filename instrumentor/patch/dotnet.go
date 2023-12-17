@@ -20,6 +20,7 @@ package patch
 
 import (
 	"fmt"
+	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	"strings"
 
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
@@ -41,8 +42,13 @@ const (
 	collectorUrlEnv       = "OTEL_TRACE_AGENT_URL"
 	tracerHomeEnv         = "OTEL_DOTNET_TRACER_HOME"
 	exportTypeEnv         = "OTEL_EXPORTER"
+	exportType            = "otlp"
+	exportProtocolEnv     = "OTEL_EXPORTER_OTLP_PROTOCOL"
+	exportProtocol        = "grpc"
 	tracerHome            = "/agent"
 	dotnetVolumeName      = "agentdir-dotnet"
+	startupHookEnv        = "DOTNET_STARTUP_HOOKS"
+	startupHook           = "agent/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -148,10 +154,9 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: convetions,
 			})
 
-			// Currently .NET instrumentation only support zipkin format, we should move to OTLP when support is added
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  collectorUrlEnv,
-				Value: fmt.Sprintf("http://%s:9411/api/v2/spans", LogzioMonitoringService),
+				Value: fmt.Sprintf("http://%s:%s", LogzioMonitoringService, consts.OTLPPort),
 			})
 			// calculate active service name
 			activeServiceName := calculateServiceName(podSpec, &container, instrumentation)
@@ -168,7 +173,17 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  exportTypeEnv,
-				Value: "Zipkin",
+				Value: exportType,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  exportProtocolEnv,
+				Value: exportProtocol,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  startupHookEnv,
+				Value: startupHook,
 			})
 
 			// Check if volume mount already exists
@@ -209,7 +224,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for _, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv {
+			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv {
 				newEnv = append(newEnv, env)
 			}
 		}
