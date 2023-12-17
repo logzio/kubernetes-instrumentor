@@ -34,18 +34,14 @@ const (
 	profilerId            = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"
 	profilerPathEnv       = "CORECLR_PROFILER_PATH"
 	profilerPath          = "/agent/linux-musl-x64/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
-	intergationEnv        = "OTEL_INTEGRATIONS"
-	intergations          = "/agent/integrations.json"
-	conventionsEnv        = "OTEL_CONVENTION"
-	serviceNameEnv        = "OTEL_SERVICE"
-	convetions            = "OpenTelemetry"
+	serviceNameEnv        = "OTEL_SERVICE_NAME"
 	collectorUrlEnv       = "OTEL_EXPORTER_OTLP_ENDPOINT"
 	tracerHomeEnv         = "OTEL_DOTNET_AUTO_HOME"
 	exportTypeEnv         = "OTEL_TRACES_EXPORTER"
 	exportType            = "otlp"
 	exportProtocolEnv     = "OTEL_EXPORTER_OTLP_PROTOCOL"
 	exportProtocol        = "grpc"
-	tracerHome            = "/agent/"
+	tracerHome            = "/agent"
 	mountPath             = "/agent"
 	dotnetVolumeName      = "agentdir-dotnet"
 	startupHookEnv        = "DOTNET_STARTUP_HOOKS"
@@ -54,6 +50,8 @@ const (
 	additonalDeps         = "/agent/AdditionalDeps"
 	sharedStoreEnv        = "DOTNET_SHARED_STORE"
 	sharedStore           = "/agent/store"
+	resourceAttrEnv       = "OTEL_RESOURCE_ATTRIBUTES"
+	resourceAttr          = "logz.io/language=dotnet"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -93,31 +91,6 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 		RunAsGroup:   &root,
 	}
 
-	// Check if init container already exists
-	initContainerExists := false
-	for _, initContainer := range podSpec.Spec.InitContainers {
-		if initContainer.Name == dotnetInitContainerName {
-			initContainerExists = true
-			break
-		}
-	}
-
-	// If not, add init container
-	if !initContainerExists {
-		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-			Name:            dotnetInitContainerName,
-			Image:           dotnetAgentName,
-			Command:         []string{"cp", "-a", "/tmp/otel/.", "/agent/"},
-			SecurityContext: securityContext,
-			VolumeMounts: []v1.VolumeMount{
-				{
-					Name:      dotnetVolumeName,
-					MountPath: mountPath,
-				},
-			},
-		})
-	}
-
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
 		if shouldPatch(instrumentation, common.DotNetProgrammingLanguage, container.Name) {
@@ -146,18 +119,8 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  intergationEnv,
-				Value: intergations,
-			})
-
-			container.Env = append(container.Env, v1.EnvVar{
 				Name:  tracerHomeEnv,
 				Value: tracerHome,
-			})
-
-			container.Env = append(container.Env, v1.EnvVar{
-				Name:  conventionsEnv,
-				Value: convetions,
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
@@ -201,6 +164,10 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  sharedStoreEnv,
 				Value: sharedStore,
 			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  resourceAttrEnv,
+				Value: resourceAttr,
+			})
 
 			// Check if volume mount already exists
 			volumeMountExists := false
@@ -209,6 +176,30 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 					volumeMountExists = true
 					break
 				}
+			}
+			// Check if init container already exists
+			initContainerExists := false
+			for _, initContainer := range podSpec.Spec.InitContainers {
+				if initContainer.Name == dotnetInitContainerName {
+					initContainerExists = true
+					break
+				}
+			}
+
+			// If not, add init container
+			if !initContainerExists {
+				podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
+					Name:            dotnetInitContainerName,
+					Image:           dotnetAgentName,
+					Command:         []string{"/bin/sh", "-c", "/init.sh"},
+					SecurityContext: securityContext,
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      dotnetVolumeName,
+							MountPath: mountPath,
+						},
+					},
+				})
 			}
 
 			// If not, add volume mount
@@ -240,7 +231,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for _, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv && env.Name != additonalDepsEnv && env.Name != sharedStoreEnv {
+			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv && env.Name != additonalDepsEnv && env.Name != sharedStoreEnv {
 				newEnv = append(newEnv, env)
 			}
 		}

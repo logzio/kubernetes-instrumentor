@@ -4,3 +4,6 @@ ADD https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/relea
 RUN mkdir /tmp/otel
 RUN unzip /tmp/opentelemetry-dotnet-instrumentation-linux-musl.zip -d /tmp/otel/
 RUN chmod -R 777 /tmp/otel
+COPY init.sh /init.sh
+RUN chmod +x /init.sh
+
