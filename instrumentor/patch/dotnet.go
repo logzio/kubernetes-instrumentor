@@ -39,16 +39,21 @@ const (
 	conventionsEnv        = "OTEL_CONVENTION"
 	serviceNameEnv        = "OTEL_SERVICE"
 	convetions            = "OpenTelemetry"
-	collectorUrlEnv       = "OTEL_TRACE_AGENT_URL"
-	tracerHomeEnv         = "OTEL_DOTNET_TRACER_HOME"
-	exportTypeEnv         = "OTEL_EXPORTER"
+	collectorUrlEnv       = "OTEL_EXPORTER_OTLP_ENDPOINT"
+	tracerHomeEnv         = "OTEL_DOTNET_AUTO_HOME"
+	exportTypeEnv         = "OTEL_TRACES_EXPORTER"
 	exportType            = "otlp"
 	exportProtocolEnv     = "OTEL_EXPORTER_OTLP_PROTOCOL"
 	exportProtocol        = "grpc"
-	tracerHome            = "/agent"
+	tracerHome            = "/agent/"
+	mountPath             = "/agent"
 	dotnetVolumeName      = "agentdir-dotnet"
 	startupHookEnv        = "DOTNET_STARTUP_HOOKS"
 	startupHook           = "/agent/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll"
+	additonalDepsEnv      = "DOTNET_ADDITIONAL_DEPS"
+	additonalDeps         = "/agent/AdditionalDeps"
+	sharedStoreEnv        = "DOTNET_SHARED_STORE"
+	sharedStore           = "/agent/store"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -107,7 +112,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			VolumeMounts: []v1.VolumeMount{
 				{
 					Name:      dotnetVolumeName,
-					MountPath: tracerHome,
+					MountPath: mountPath,
 				},
 			},
 		})
@@ -157,7 +162,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  collectorUrlEnv,
-				Value: fmt.Sprintf("http://%s:%s", LogzioMonitoringService, consts.OTLPPort),
+				Value: fmt.Sprintf("http://%s:%d", LogzioMonitoringService, consts.OTLPPort),
 			})
 			// calculate active service name
 			activeServiceName := calculateServiceName(podSpec, &container, instrumentation)
@@ -187,6 +192,16 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Value: startupHook,
 			})
 
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  additonalDepsEnv,
+				Value: additonalDeps,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  sharedStoreEnv,
+				Value: sharedStore,
+			})
+
 			// Check if volume mount already exists
 			volumeMountExists := false
 			for _, volumeMount := range container.VolumeMounts {
@@ -199,7 +214,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			// If not, add volume mount
 			if !volumeMountExists {
 				container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-					MountPath: tracerHome,
+					MountPath: mountPath,
 					Name:      dotnetVolumeName,
 				})
 			}
@@ -225,7 +240,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for _, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv {
+			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv && env.Name != additonalDepsEnv && env.Name != sharedStoreEnv {
 				newEnv = append(newEnv, env)
 			}
 		}
