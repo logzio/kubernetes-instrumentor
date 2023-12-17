@@ -43,7 +43,7 @@ jobs:
       - name: Build and push Docker images to aws ecr release
         run: |
           TAG=latest
-          AWS_ECR_REGISTRY=public.ecr.aws/your-ecr-registry-name
+          AWS_ECR_REGISTRY=public.ecr.aws/logzio
           # build
           docker build -t $AWS_ECR_REGISTRY/instrumentation-detector:$TAG -f detectors/Dockerfile . --build-arg SERVICE_NAME=detectors
           docker build -t $AWS_ECR_REGISTRY/instrumentor:$TAG . --build-arg SERVICE_NAME=instrumentor
