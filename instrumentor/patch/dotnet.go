@@ -33,7 +33,7 @@ const (
 	profilerEndVar        = "CORECLR_PROFILER"
 	profilerId            = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"
 	profilerPathEnv       = "CORECLR_PROFILER_PATH"
-	profilerPath          = "/agent/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
+	profilerPath          = "/agent/linux-musl-x64/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
 	intergationEnv        = "OTEL_INTEGRATIONS"
 	intergations          = "/agent/integrations.json"
 	conventionsEnv        = "OTEL_CONVENTION"
@@ -48,7 +48,7 @@ const (
 	tracerHome            = "/agent"
 	dotnetVolumeName      = "agentdir-dotnet"
 	startupHookEnv        = "DOTNET_STARTUP_HOOKS"
-	startupHook           = "agent/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll"
+	startupHook           = "/agent/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -102,6 +102,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
 			Name:            dotnetInitContainerName,
 			Image:           dotnetAgentName,
+			Command:         []string{"cp", "-a", "/tmp/otel/.", "/agent/"},
 			SecurityContext: securityContext,
 			VolumeMounts: []v1.VolumeMount{
 				{
