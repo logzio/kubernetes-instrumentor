@@ -20,6 +20,7 @@ package inspectors
 
 import (
 	"github.com/logzio/kubernetes-instrumentor/detectors/process"
+	"log"
 	"strings"
 )
 
@@ -28,12 +29,14 @@ type openTelemetryInspector struct{}
 var OpenTelemetry = &openTelemetryInspector{}
 
 const (
-	otelStr = "OTEL"
-	otlpStr = "OTLP"
+	otelStr          = "OTEL"
+	otlpStr          = "OTLP"
+	opentelemetryStr = "opentelemetry"
+	heliosStr        = "helios"
 )
 
 func (o *openTelemetryInspector) Inspect(p *process.Details) bool {
-	if otelInEnv(p.Env) || otelInCmdLine(p.CmdLine) {
+	if otelInEnv(p.Env) || otelInCmdLine(p.CmdLine) || otelInDeps(p.Dependencies) {
 		return true
 	}
 	return false
@@ -51,4 +54,15 @@ func otelInEnv(env map[string]string) bool {
 
 func otelInCmdLine(cmdLine string) bool {
 	return strings.Contains(cmdLine, otelStr) || strings.Contains(cmdLine, otlpStr)
+}
+
+func otelInDeps(deps map[string]string) bool {
+	detected := false
+	for dep := range deps {
+		if strings.Contains(dep, opentelemetryStr) || strings.Contains(dep, heliosStr) {
+			log.Printf("Found opentelemetry dependency: %s", dep)
+			detected = true
+		}
+	}
+	return detected
 }

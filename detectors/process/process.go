@@ -19,6 +19,8 @@ Credits: https://github.com/keyval-dev/odigos
 package process
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/fntlnz/mountinfo"
 	"io"
@@ -29,11 +31,151 @@ import (
 	"strings"
 )
 
+// PackageReference for .csproj deps
+type PackageReference struct {
+	Include string `xml:"Include,attr"`
+	Version string `xml:"Version,attr"`
+}
+
 type Details struct {
-	ProcessID int
-	ExeName   string
-	CmdLine   string
-	Env       map[string]string
+	ProcessID    int
+	ExeName      string
+	CmdLine      string
+	Env          map[string]string
+	Dependencies map[string]string
+}
+
+func findFiles(rootPath string, targetFiles []string) []string {
+	var foundFiles []string
+
+	files, err := os.ReadDir(rootPath)
+	if err != nil {
+		return foundFiles
+	}
+
+	for _, file := range files {
+		fullPath := path.Join(rootPath, file.Name())
+		if file.IsDir() {
+			foundFiles = append(foundFiles, findFiles(fullPath, targetFiles)...)
+		} else {
+			for _, target := range targetFiles {
+				if target == ".csproj" && strings.HasSuffix(file.Name(), ".csproj") {
+					foundFiles = append(foundFiles, fullPath)
+				} else if file.Name() == target {
+					foundFiles = append(foundFiles, fullPath)
+				}
+			}
+		}
+	}
+	return foundFiles
+}
+
+func extractDependencies(pid int) map[string]string {
+	basepath := path.Join("/proc", strconv.Itoa(pid), "root")
+	// List of target dependency files
+	targetFiles := []string{"package.json", "requirements.txt", "Startup.cs", ".csproj"}
+	// Find all matching files recursively
+	matchingFiles := findFiles(basepath, targetFiles)
+	log.Println("Found dependency files: ", matchingFiles)
+
+	files := map[string]func(string) map[string]string{
+		"package.json":     extractNodejsDeps,
+		"requirements.txt": extractPythonDeps,
+		"Startup.cs":       extractDotNetDeps,
+		".csproj":          extractDotNetCsProjDeps,
+	}
+
+	allDeps := make(map[string]string)
+	for _, filepath := range matchingFiles {
+		handler, ok := files[path.Base(filepath)]
+		if ok {
+			for k, v := range handler(filepath) {
+				allDeps[k] = v
+			}
+		}
+	}
+
+	return allDeps
+}
+
+func extractNodejsDeps(filepath string) map[string]string {
+	deps := make(map[string]string)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return deps
+	}
+
+	var jsonData map[string]interface{}
+	if err = json.Unmarshal(data, &jsonData); err != nil {
+		return deps
+	}
+
+	if dependencies, ok := jsonData["dependencies"].(map[string]interface{}); ok {
+		for pkg, ver := range dependencies {
+			deps[pkg] = ver.(string)
+		}
+	}
+	return deps
+}
+
+func extractPythonDeps(filepath string) map[string]string {
+	deps := make(map[string]string)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return deps
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Split(line, "==")
+		if len(parts) == 2 {
+			deps[parts[0]] = parts[1]
+		}
+	}
+	return deps
+}
+
+func extractDotNetDeps(filepath string) map[string]string {
+	deps := make(map[string]string)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return deps
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "services.Add") {
+			parts := strings.Split(line, ".")
+			if len(parts) > 1 {
+				serviceName := parts[len(parts)-1]
+				// Just marking the dependency as detected, without a version
+				deps[serviceName] = "detected"
+			}
+		}
+	}
+	return deps
+}
+
+func extractDotNetCsProjDeps(filepath string) map[string]string {
+	deps := make(map[string]string)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return deps
+	}
+
+	var references []PackageReference
+	xml.Unmarshal(data, &references)
+
+	for _, ref := range references {
+		deps[ref.Include] = ref.Version
+	}
+
+	return deps
 }
 
 func FindAllInContainer(podUID string, containerName string) ([]Details, error) {
@@ -111,18 +253,19 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, error) 
 						}
 						env[parts[0]] = parts[1]
 					}
-
+					// Add dependencies
+					deps := extractDependencies(pid)
 					detectedContainers = append(detectedContainers, Details{
-						ProcessID: pid,
-						ExeName:   exeName,
-						CmdLine:   cmd,
-						Env:       env,
+						ProcessID:    pid,
+						ExeName:      exeName,
+						CmdLine:      cmd,
+						Env:          env,
+						Dependencies: deps,
 					})
 				}
 			}
 		}
 	}
-
-	log.Println("No processes found")
+	log.Printf("Detected containers: %+v", detectedContainers)
 	return detectedContainers, nil
 }
