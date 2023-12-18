@@ -20,6 +20,7 @@ package patch
 
 import (
 	"fmt"
+	"github.com/logzio/kubernetes-instrumentor/common/consts"
 	"strings"
 
 	apiV1 "github.com/logzio/kubernetes-instrumentor/api/v1alpha1"
@@ -28,21 +29,31 @@ import (
 )
 
 const (
-	enableProfilingEnvVar = "CORECLR_ENABLE_PROFILING"
-	profilerEndVar        = "CORECLR_PROFILER"
+	enableProfilingEnvVar = "COR_ENABLE_PROFILING"
+	profilerEndVar        = "COR_PROFILER"
 	profilerId            = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"
-	profilerPathEnv       = "CORECLR_PROFILER_PATH"
-	profilerPath          = "/agent/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
-	intergationEnv        = "OTEL_INTEGRATIONS"
-	intergations          = "/agent/integrations.json"
-	conventionsEnv        = "OTEL_CONVENTION"
-	serviceNameEnv        = "OTEL_SERVICE"
-	convetions            = "OpenTelemetry"
-	collectorUrlEnv       = "OTEL_TRACE_AGENT_URL"
-	tracerHomeEnv         = "OTEL_DOTNET_TRACER_HOME"
-	exportTypeEnv         = "OTEL_EXPORTER"
+	profilerPathEnv       = "COR_PROFILER_PATH"
+	profilerPath          = "/agent/linux-musl-x64/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
+	serviceNameEnv        = "OTEL_SERVICE_NAME"
+	collectorUrlEnv       = "OTEL_EXPORTER_OTLP_ENDPOINT"
+	tracerHomeEnv         = "OTEL_DOTNET_AUTO_HOME"
+	exportTypeEnv         = "OTEL_TRACES_EXPORTER"
+	exportType            = "otlp"
+	exportProtocolEnv     = "OTEL_EXPORTER_OTLP_PROTOCOL"
+	exportProtocol        = "grpc"
 	tracerHome            = "/agent"
+	mountPath             = "/agent"
 	dotnetVolumeName      = "agentdir-dotnet"
+	startupHookEnv        = "DOTNET_STARTUP_HOOKS"
+	startupHook           = "/agent/net/OpenTelemetry.AutoInstrumentation.StartupHook.dll"
+	additonalDepsEnv      = "DOTNET_ADDITIONAL_DEPS"
+	additonalDeps         = "/agent/AdditionalDeps"
+	sharedStoreEnv        = "DOTNET_SHARED_STORE"
+	sharedStore           = "/agent/store"
+	resourceAttrEnv       = "OTEL_RESOURCE_ATTRIBUTES"
+	resourceAttr          = "logz.io/language=dotnet"
+	metricsExporterEnv    = "OTEL_METRICS_EXPORTER"
+	logsExporterEnv       = "OTEL_LOGS_EXPORTER"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -82,30 +93,6 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 		RunAsGroup:   &root,
 	}
 
-	// Check if init container already exists
-	initContainerExists := false
-	for _, initContainer := range podSpec.Spec.InitContainers {
-		if initContainer.Name == dotnetInitContainerName {
-			initContainerExists = true
-			break
-		}
-	}
-
-	// If not, add init container
-	if !initContainerExists {
-		podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
-			Name:            dotnetInitContainerName,
-			Image:           dotnetAgentName,
-			SecurityContext: securityContext,
-			VolumeMounts: []v1.VolumeMount{
-				{
-					Name:      dotnetVolumeName,
-					MountPath: tracerHome,
-				},
-			},
-		})
-	}
-
 	var modifiedContainers []v1.Container
 	for _, container := range podSpec.Spec.Containers {
 		if shouldPatch(instrumentation, common.DotNetProgrammingLanguage, container.Name) {
@@ -134,24 +121,13 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  intergationEnv,
-				Value: intergations,
-			})
-
-			container.Env = append(container.Env, v1.EnvVar{
 				Name:  tracerHomeEnv,
 				Value: tracerHome,
 			})
 
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  conventionsEnv,
-				Value: convetions,
-			})
-
-			// Currently .NET instrumentation only support zipkin format, we should move to OTLP when support is added
-			container.Env = append(container.Env, v1.EnvVar{
 				Name:  collectorUrlEnv,
-				Value: fmt.Sprintf("http://%s:9411/api/v2/spans", LogzioMonitoringService),
+				Value: fmt.Sprintf("http://%s:%d", LogzioMonitoringService, consts.OTLPPort),
 			})
 			// calculate active service name
 			activeServiceName := calculateServiceName(podSpec, &container, instrumentation)
@@ -168,7 +144,39 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  exportTypeEnv,
-				Value: "Zipkin",
+				Value: exportType,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  exportProtocolEnv,
+				Value: exportProtocol,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  startupHookEnv,
+				Value: startupHook,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  additonalDepsEnv,
+				Value: additonalDeps,
+			})
+
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  sharedStoreEnv,
+				Value: sharedStore,
+			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  resourceAttrEnv,
+				Value: resourceAttr,
+			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  metricsExporterEnv,
+				Value: "none",
+			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  logsExporterEnv,
+				Value: "none",
 			})
 
 			// Check if volume mount already exists
@@ -179,11 +187,35 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 					break
 				}
 			}
+			// Check if init container already exists
+			initContainerExists := false
+			for _, initContainer := range podSpec.Spec.InitContainers {
+				if initContainer.Name == dotnetInitContainerName {
+					initContainerExists = true
+					break
+				}
+			}
+
+			// If not, add init container
+			if !initContainerExists {
+				podSpec.Spec.InitContainers = append(podSpec.Spec.InitContainers, v1.Container{
+					Name:            dotnetInitContainerName,
+					Image:           dotnetAgentName,
+					Command:         []string{"/bin/sh", "-c", "/init.sh"},
+					SecurityContext: securityContext,
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      dotnetVolumeName,
+							MountPath: mountPath,
+						},
+					},
+				})
+			}
 
 			// If not, add volume mount
 			if !volumeMountExists {
 				container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-					MountPath: tracerHome,
+					MountPath: mountPath,
 					Name:      dotnetVolumeName,
 				})
 			}
@@ -209,7 +241,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for _, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != intergationEnv && env.Name != conventionsEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv {
+			if env.Name != resourceAttrEnv && env.Name != metricsExporterEnv && env.Name != logsExporterEnv && env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv && env.Name != additonalDepsEnv && env.Name != sharedStoreEnv {
 				newEnv = append(newEnv, env)
 			}
 		}
