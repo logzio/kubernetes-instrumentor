@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	enableProfilingEnvVar = "CORECLR_ENABLE_PROFILING"
-	profilerEndVar        = "CORECLR_PROFILER"
+	enableProfilingEnvVar = "COR_ENABLE_PROFILING"
+	profilerEndVar        = "COR_PROFILER"
 	profilerId            = "{918728DD-259F-4A6A-AC2B-B85E1B658318}"
-	profilerPathEnv       = "CORECLR_PROFILER_PATH"
+	profilerPathEnv       = "COR_PROFILER_PATH"
 	profilerPath          = "/agent/linux-musl-x64/OpenTelemetry.AutoInstrumentation.ClrProfiler.Native.so"
 	serviceNameEnv        = "OTEL_SERVICE_NAME"
 	collectorUrlEnv       = "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -52,6 +52,8 @@ const (
 	sharedStore           = "/agent/store"
 	resourceAttrEnv       = "OTEL_RESOURCE_ATTRIBUTES"
 	resourceAttr          = "logz.io/language=dotnet"
+	metricsExporterEnv    = "OTEL_METRICS_EXPORTER"
+	logsExporterEnv       = "OTEL_LOGS_EXPORTER"
 )
 
 var dotNet = &dotNetPatcher{}
@@ -168,6 +170,14 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  resourceAttrEnv,
 				Value: resourceAttr,
 			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  metricsExporterEnv,
+				Value: "none",
+			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  logsExporterEnv,
+				Value: "none",
+			})
 
 			// Check if volume mount already exists
 			volumeMountExists := false
@@ -231,7 +241,7 @@ func (d *dotNetPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for _, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv && env.Name != additonalDepsEnv && env.Name != sharedStoreEnv {
+			if env.Name != resourceAttrEnv && env.Name != metricsExporterEnv && env.Name != logsExporterEnv && env.Name != NodeIPEnvName && env.Name != enableProfilingEnvVar && env.Name != profilerEndVar && env.Name != profilerPathEnv && env.Name != serviceNameEnv && env.Name != collectorUrlEnv && env.Name != tracerHomeEnv && env.Name != exportTypeEnv && env.Name != exportProtocolEnv && env.Name != startupHookEnv && env.Name != additonalDepsEnv && env.Name != sharedStoreEnv {
 				newEnv = append(newEnv, env)
 			}
 		}
