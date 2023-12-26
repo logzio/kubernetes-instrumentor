@@ -45,6 +45,7 @@ func (o *openTelemetryInspector) Inspect(p *process.Details) bool {
 func otelInEnv(env map[string]string) bool {
 	for envKey := range env {
 		if strings.Contains(envKey, otelStr) || strings.Contains(envKey, otlpStr) {
+			log.Printf("found opentelemetry env var:\nkey: %s\nvalue: %s\n", envKey, env[envKey])
 			return true
 		}
 	}
@@ -53,7 +54,11 @@ func otelInEnv(env map[string]string) bool {
 }
 
 func otelInCmdLine(cmdLine string) bool {
-	return strings.Contains(cmdLine, otelStr) || strings.Contains(cmdLine, otlpStr)
+	if strings.Contains(cmdLine, otelStr) || strings.Contains(cmdLine, otlpStr) {
+		log.Printf("found opentelemetry refrence in cmdline: %s", cmdLine)
+		return true
+	}
+	return false
 }
 
 func otelInDeps(deps map[string]string) bool {

@@ -266,6 +266,19 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, error) 
 			}
 		}
 	}
-	log.Printf("Detected containers: %+v", detectedContainers)
+	log.Print("Detected containers:")
+	for i, container := range detectedContainers {
+		log.Printf("%d: %s", i, container.ExeName)
+		log.Printf("PID: %d", container.ProcessID)
+		log.Printf("CmdLine: %s", container.CmdLine)
+		log.Println("Dependencies:")
+		for _, dep := range container.Dependencies {
+			log.Printf("Dependency: %s", dep)
+		}
+		log.Println("Environment variables:")
+		for key, value := range container.Env {
+			log.Printf("%s=%s", key, value)
+		}
+	}
 	return detectedContainers, nil
 }

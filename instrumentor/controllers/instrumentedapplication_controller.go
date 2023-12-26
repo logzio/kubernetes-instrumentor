@@ -97,6 +97,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 
 		for _, pod := range childPods.Items {
 			// If pod finished -  read detection result
+			logger.V(0).Info("checking pod", "pod", pod.Name)
 			if pod.Status.Phase == corev1.PodSucceeded && len(pod.Status.ContainerStatuses) > 0 {
 				containerStatus := pod.Status.ContainerStatuses[0]
 				if containerStatus.State.Terminated == nil {
@@ -107,7 +108,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, err
 				}
 			} else if pod.Status.Phase == corev1.PodFailed {
-				logger.V(0).Info("lang detection pod failed. marking as error")
+				logger.V(0).Info("detection pod failed. marking as error", "pod", pod.Name)
 				instrumentedApp.Status.InstrumentationDetection.Phase = v1.ErrorInstrumentationDetectionPhase
 				err = r.Status().Update(ctx, &instrumentedApp)
 				if err != nil {
