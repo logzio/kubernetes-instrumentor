@@ -50,8 +50,6 @@ const (
 	additonalDeps         = "/agent/AdditionalDeps"
 	sharedStoreEnv        = "DOTNET_SHARED_STORE"
 	sharedStore           = "/agent/store"
-	resourceAttrEnv       = "OTEL_RESOURCE_ATTRIBUTES"
-	resourceAttr          = "logz.io/language=dotnet"
 	metricsExporterEnv    = "OTEL_METRICS_EXPORTER"
 	logsExporterEnv       = "OTEL_LOGS_EXPORTER"
 )
@@ -168,7 +166,7 @@ func (d *dotNetPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			})
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  resourceAttrEnv,
-				Value: resourceAttr,
+				Value: fmt.Sprintf(resourceAttr, easyConnectVersion),
 			})
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  metricsExporterEnv,

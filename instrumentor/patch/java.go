@@ -32,7 +32,7 @@ const (
 	javaVolumeName               = "agentdir-java"
 	javaMountPath                = "/agent"
 	otelResourceAttributesEnvVar = "OTEL_RESOURCE_ATTRIBUTES"
-	otelResourceAttrPatteern     = "service.name=%s,k8s.pod.name=%s"
+	otelResourceAttrPatteern     = "easy.connect.version=%s,service.name=%s,k8s.pod.name=%s"
 	javaOptsEnvVar               = "JAVA_OPTS"
 	javaToolOptionsEnvVar        = "JAVA_TOOL_OPTIONS"
 	javaToolOptionsPattern       = "-javaagent:/agent/opentelemetry-javaagent-all.jar " +
@@ -141,7 +141,7 @@ func (j *javaPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV1.
 			activeServiceName := calculateServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  otelResourceAttributesEnvVar,
-				Value: fmt.Sprintf(otelResourceAttrPatteern, activeServiceName, PodNameEnvValue),
+				Value: fmt.Sprintf(otelResourceAttrPatteern, easyConnectVersion, activeServiceName, PodNameEnvValue),
 			})
 			// update the corresponding crd
 			for i := range instrumentation.Spec.Languages {
@@ -240,7 +240,7 @@ func (j *javaPatcher) UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instrume
 			}
 			newEnv = append(newEnv, v1.EnvVar{
 				Name:  otelResourceAttributesEnvVar,
-				Value: fmt.Sprintf(otelResourceAttrPatteern, serviceName, PodNameEnvValue),
+				Value: fmt.Sprintf(otelResourceAttrPatteern, easyConnectVersion, serviceName, PodNameEnvValue),
 			})
 			container.Env = newEnv
 			// update the corresponding crd

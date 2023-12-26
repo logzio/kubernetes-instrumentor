@@ -123,6 +123,10 @@ func (n *nodeJsPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 				Name:  nodeEnvTraceProtocol,
 				Value: "grpc",
 			})
+			container.Env = append(container.Env, v1.EnvVar{
+				Name:  resourceAttrEnv,
+				Value: fmt.Sprintf(resourceAttr, easyConnectVersion),
+			})
 
 			container.Env = append(container.Env, v1.EnvVar{
 				Name:  nodeEnvEndpoint,

@@ -39,6 +39,9 @@ const (
 	nodeInitContainerName        = "copy-nodejs-agent"
 	javaInitContainerName        = "copy-java-agent"
 	dotnetInitContainerName      = "copy-dotnet-agent"
+	easyConnectVersion           = "v1.0.9"
+	resourceAttrEnv              = "OTEL_RESOURCE_ATTRIBUTES"
+	resourceAttr                 = "easy.connect.version=%s"
 )
 
 var (
