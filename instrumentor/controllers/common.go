@@ -143,10 +143,8 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	}
 
 	if len(instApp.Spec.Applications) == 0 || instApp.Status.InstrumentationDetection.Phase != apiV1.CompletedInstrumentationDetectionPhase {
-		logger.V(0).Info("No new applications detected or app detection is still in progress", "container", instApp.Name, "detectedapp", instApp.Spec.Applications, "appstatus", instApp.Status.InstrumentationDetection.Phase)
 		return nil
 	}
-
 	if shouldDetectApps(podTemplateSpec, logger) {
 		err = processDetectedApps(ctx, req, c, podTemplateSpec, instApp, logger, object)
 		if err != nil {

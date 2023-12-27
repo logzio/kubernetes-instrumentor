@@ -97,7 +97,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 
 		for _, pod := range childPods.Items {
 			// If pod finished -  read detection result
-			logger.V(0).Info("checking pod", "pod", pod.Name)
 			if pod.Status.Phase == corev1.PodSucceeded && len(pod.Status.ContainerStatuses) > 0 {
 				containerStatus := pod.Status.ContainerStatuses[0]
 				if containerStatus.State.Terminated == nil {
@@ -162,7 +161,6 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 		logger.V(0).Info("detection result", "result", detectionResult)
 		instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
 		instrumentedApp.Spec.Applications = detectionResult.ApplicationByContainer
-
 		err = r.Update(ctx, &instrumentedApp)
 		if err != nil {
 			logger.Error(err, "error updating InstrumentedApp object with detection result")
@@ -202,7 +200,10 @@ func (r *InstrumentedApplicationReconciler) startDetection(ctx context.Context, 
 }
 
 func (r *InstrumentedApplicationReconciler) shouldStartDetection(app *v1.InstrumentedApplication) bool {
-	return app.Status.InstrumentationDetection.Phase == v1.PendingInstrumentationDetectionPhase
+	if app.Status.InstrumentationDetection.Phase == v1.PendingInstrumentationDetectionPhase {
+		return true
+	}
+	return false
 }
 
 func (r *InstrumentedApplicationReconciler) isLangDetected(app *v1.InstrumentedApplication) bool {
