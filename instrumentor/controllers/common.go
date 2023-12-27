@@ -69,11 +69,9 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 		logger.Error(err, "error finding InstrumentedApp objects")
 		return err
 	}
-
 	// if no InstrumentedApp found - create one
 	if len(instApps.Items) == 0 {
 		if readyReplicas == 0 {
-			logger.V(0).Info("not enough ready replicas, waiting for pods to be ready")
 			return nil
 		}
 
@@ -174,14 +172,12 @@ func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, in
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, instApp)
 	if err != nil {
-		logger.Error(err, "Error computing instrumented status")
 		return err
 	}
 	if instrumented != instApp.Status.TracesInstrumented {
 		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "Error updating instrumented status")
 			return err
 		}
 	}
@@ -190,14 +186,10 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		logger.V(0).Info("Rolling back instrumentation", "object", object)
 		err = patch.RollbackPatch(podTemplateSpec, instApp)
 		if err != nil {
-			logger.Error(err, "Error unpatching resource")
 			return err
 		}
-		logger.V(0).Info("updating object after rollback", "object", object)
 		err = c.Update(ctx, object)
 		if err != nil {
-			// Save the error encountered
-			logger.Error(err, "error instrumenting application")
 			return err
 		}
 		// update crd active service names due to rollback
@@ -206,13 +198,11 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 		}
 		err = c.Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "error updating instrumented application spec")
 			return err
 		}
 		instApp.Status.TracesInstrumented = false
 		err = c.Status().Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "error updating instrumented application status")
 			return err
 		}
 		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
@@ -223,7 +213,6 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, instApp)
 	if err != nil {
-		logger.Error(err, "error computing instrumented status")
 		return err
 	}
 	if instrumented != instApp.Status.TracesInstrumented {
@@ -231,7 +220,6 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 		instApp.Status.TracesInstrumented = instrumented
 		err = c.Status().Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "error computing traces instrumented status")
 			return err
 		}
 	}
@@ -240,24 +228,20 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 		logger.V(0).Info("Instrumenting pod: " + podTemplateSpec.GetName())
 		err = patch.ModifyObject(podTemplateSpec, instApp)
 		if err != nil {
-			logger.Error(err, "error patching resource")
 			return err
 		}
 		err = c.Update(ctx, object)
 		if err != nil {
-			logger.Error(err, "error instrumenting application ")
 			return err
 		}
 		err = c.Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "error updating custom resource spec")
 			return err
 		}
 		// instApp.Status.TracesInstrumented is a part of the status in the custom resource definition
 		instApp.Status.TracesInstrumented = true
 		err = c.Status().Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "error updating custom resource instrumented status")
 			return err
 		}
 
@@ -266,20 +250,18 @@ func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplat
 	if instrumented {
 		err = patch.UpdateActiveServiceName(podTemplateSpec, instApp)
 		if err != nil {
-			logger.Error(err, "error updating active service name for resource")
 			return err
 		}
 		err = c.Update(ctx, object)
 		if err != nil {
-			logger.Error(err, "error instrumenting application")
 			return err
 		}
 		err = c.Update(ctx, instApp)
 		if err != nil {
-			logger.Error(err, "error updating custom resource instrumented status")
 			return err
 		}
 	}
+	logger.V(0).Info("Successfully instrumented pod: " + podTemplateSpec.GetName())
 	return nil
 }
 

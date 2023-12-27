@@ -72,12 +72,10 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *DeploymentReconciler) instrumentDeployment(ctx context.Context, req ctrl.Request, logger logr.Logger, dep appsv1.Deployment) error {
-
 	if shouldSkip(dep.Annotations, dep.Namespace) {
 		logger.V(5).Info("skipped instrumentation for deployment")
 		return nil
 	}
-
 	err := syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, dep.Status.ReadyReplicas, &dep, &dep.Spec.Template, instAppDepOwnerKey)
 	if err != nil {
 		logger.Error(err, "error syncing instrumented apps with deployments")

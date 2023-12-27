@@ -111,7 +111,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				if len(pod.Status.ContainerStatuses) > 0 && pod.Status.ContainerStatuses[0].State.Terminated != nil {
 					failureReason = pod.Status.ContainerStatuses[0].State.Terminated.Reason
 				}
-				logger.V(0).Info("detection pod failed", "pod", pod.Name, "reason", failureReason)
+				logger.V(0).Info("detection pod failed", "reason", failureReason)
 				instrumentedApp.Status.InstrumentationDetection.Phase = v1.ErrorInstrumentationDetectionPhase
 				err = r.Status().Update(ctx, &instrumentedApp)
 				if err != nil {
