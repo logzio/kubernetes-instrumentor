@@ -107,14 +107,18 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, err
 				}
 			} else if pod.Status.Phase == corev1.PodFailed {
-				logger.V(0).Info("detection pod failed. marking as error", "pod", pod.Name)
+				var failureReason string
+				if len(pod.Status.ContainerStatuses) > 0 && pod.Status.ContainerStatuses[0].State.Terminated != nil {
+					failureReason = pod.Status.ContainerStatuses[0].State.Terminated.Reason
+				}
+				logger.V(0).Info("detection pod failed", "pod", pod.Name, "reason", failureReason)
 				instrumentedApp.Status.InstrumentationDetection.Phase = v1.ErrorInstrumentationDetectionPhase
 				err = r.Status().Update(ctx, &instrumentedApp)
 				if err != nil {
 					logger.Error(err, "error updating InstrumentedApp status")
 					return ctrl.Result{}, err
 				}
-				return ctrl.Result{}, nil
+				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 	}
