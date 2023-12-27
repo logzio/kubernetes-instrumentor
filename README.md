@@ -46,6 +46,20 @@ make push-images
 ```
 
 ## Change log
+* v1.0.8
+    - Update `dotnet` agent:
+      - use `otlp` exporter instead of `zipkin`
+      - upgrade version `v0.5.0` -> `v1.2.0`
+      - Add env variables:
+        - `OTEL_EXPORTER_OTLP_PROTOCOL`
+        - `DOTNET_STARTUP_HOOKS`
+        - `OTEL_METRICS_EXPORTER`
+        - `OTEL_LOGS_EXPORTER`
+        - `OTEL_EXPORTER_OTLP_PROTOCOL`
+        - `OTEL_DOTNET_AUTO_HOME`
+        - `OTEL_RESOURCE_ATTRIBUTES`
+    - Update `python` agent:
+        - update deps
 * v1.0.7
     - Add opentelemetry dependency detection in dependency files for: `nodejs`, `python`, `dotnet`  
 * v1.0.6
