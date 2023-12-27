@@ -172,88 +172,114 @@ func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, in
 }
 
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	objectKey := client.ObjectKeyFromObject(object)
+	if err := c.Get(ctx, objectKey, object); err != nil {
+		return err
+	}
 	instAppKey := client.ObjectKeyFromObject(instApp)
 	if err := c.Get(ctx, instAppKey, instApp); err != nil {
 		return err
 	}
-
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, instApp)
 	if err != nil {
 		return err
 	}
-
-	annotations := podTemplateSpec.GetAnnotations()
-	shouldRollback := instrumented && strings.ToLower(annotations[TracesInstrumentAnnotation]) == "rollback"
-	if instApp.Status.TracesInstrumented != shouldRollback {
-		logger.V(0).Info("Rollback state change detected", "object", object)
-
-		if shouldRollback {
-			logger.V(0).Info("Performing rollback", "object", object)
-			if err := patch.RollbackPatch(podTemplateSpec, instApp); err != nil {
-				return err
-			}
-
-			if err := c.Update(ctx, object); err != nil {
-				return err
-			}
-
-			for i := range instApp.Spec.Languages {
-				instApp.Spec.Languages[i].ActiveServiceName = ""
-			}
-		}
-
-		instApp.Status.TracesInstrumented = !shouldRollback
-		if err := c.Status().Update(ctx, instApp); err != nil {
+	if instrumented != instApp.Status.TracesInstrumented {
+		instApp.Status.TracesInstrumented = instrumented
+		err = c.Status().Update(ctx, instApp)
+		if err != nil {
 			return err
 		}
-
-		if shouldRollback {
-			logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
+	}
+	annotations := podTemplateSpec.GetAnnotations()
+	if instrumented && strings.ToLower(annotations[TracesInstrumentAnnotation]) == "rollback" {
+		logger.V(0).Info("Rolling back instrumentation", "object", object)
+		err = patch.RollbackPatch(podTemplateSpec, instApp)
+		if err != nil {
+			return err
 		}
+		err = c.Update(ctx, object)
+		if err != nil {
+			return err
+		}
+		// update crd active service names due to rollback
+		for i := range instApp.Spec.Languages {
+			instApp.Spec.Languages[i].ActiveServiceName = ""
+		}
+		err = c.Update(ctx, instApp)
+		if err != nil {
+			return err
+		}
+		instApp.Status.TracesInstrumented = false
+		err = c.Status().Update(ctx, instApp)
+		if err != nil {
+			return err
+		}
+		logger.V(0).Info("Successfully rolled back instrumentation, changing instrumented app status to not instrumented")
 	}
 	return nil
 }
 
 func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	objectKey := client.ObjectKeyFromObject(object)
+	if err := c.Get(ctx, objectKey, object); err != nil {
+		return err
+	}
 	instAppKey := client.ObjectKeyFromObject(instApp)
 	if err := c.Get(ctx, instAppKey, instApp); err != nil {
 		return err
 	}
-
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, instApp)
 	if err != nil {
 		return err
 	}
-
-	if instApp.Status.TracesInstrumented != instrumented {
-		logger.V(0).Info("Instrumentation state change detected", "instrumented", instrumented)
-
-		if !instrumented {
-			logger.V(0).Info("Instrumenting pod")
-			if err := patch.ModifyObject(podTemplateSpec, instApp); err != nil {
-				return err
-			}
-			if err := c.Update(ctx, object); err != nil {
-				return err
-			}
-		}
-
+	if instrumented != instApp.Status.TracesInstrumented {
+		logger.V(0).Info("updating .status.instrumented", "instrumented", instrumented)
 		instApp.Status.TracesInstrumented = instrumented
-		if err := c.Status().Update(ctx, instApp); err != nil {
+		err = c.Status().Update(ctx, instApp)
+		if err != nil {
+			return err
+		}
+	}
+	// If not instrumented - patch deployment
+	if !instrumented {
+		logger.V(0).Info("Instrumenting pod")
+		err = patch.ModifyObject(podTemplateSpec, instApp)
+		if err != nil {
+			return err
+		}
+		err = c.Update(ctx, object)
+		if err != nil {
+			return err
+		}
+		err = c.Update(ctx, instApp)
+		if err != nil {
+			return err
+		}
+		// instApp.Status.TracesInstrumented is a part of the status in the custom resource definition
+		instApp.Status.TracesInstrumented = true
+		err = c.Status().Update(ctx, instApp)
+		if err != nil {
 			return err
 		}
 
-		if instrumented {
-			if err := patch.UpdateActiveServiceName(podTemplateSpec, instApp); err != nil {
-				return err
-			}
-			if err := c.Update(ctx, object); err != nil {
-				return err
-			}
-		}
-
-		logger.V(0).Info("Successfully updated instrumentation status")
 	}
+	// if the app is instrumented update the active service name
+	if instrumented {
+		err = patch.UpdateActiveServiceName(podTemplateSpec, instApp)
+		if err != nil {
+			return err
+		}
+		err = c.Update(ctx, object)
+		if err != nil {
+			return err
+		}
+		err = c.Update(ctx, instApp)
+		if err != nil {
+			return err
+		}
+	}
+	logger.V(0).Info("Successfully instrumented pod: " + podTemplateSpec.GetName())
 	return nil
 }
 
