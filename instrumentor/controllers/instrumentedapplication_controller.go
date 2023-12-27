@@ -104,7 +104,12 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				}
 				err = r.updatePodWithDetectionResult(ctx, containerStatus, logger, instrumentedApp, req.NamespacedName)
 				if err != nil {
-					return ctrl.Result{}, err
+					if apierrors.IsConflict(err) {
+						logger.V(0).Info("Conflict encountered and ignored during instrumentedApp update")
+						return ctrl.Result{}, nil
+					} else {
+						return ctrl.Result{}, err
+					}
 				}
 			} else if pod.Status.Phase == corev1.PodFailed {
 				var failureReason string
@@ -167,14 +172,12 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 		instrumentedApp.Spec.Applications = detectionResult.ApplicationByContainer
 		err = r.Update(ctx, &instrumentedApp)
 		if err != nil {
-			logger.Error(err, "error updating InstrumentedApp object with detection result")
 			return err
 		}
 
 		instrumentedApp.Status.InstrumentationDetection.Phase = v1.CompletedInstrumentationDetectionPhase
 		err = r.Status().Update(ctx, &instrumentedApp)
 		if err != nil {
-			logger.Error(err, "error updating InstrumentedApp phase status with detection result")
 			return err
 		}
 	}

@@ -78,7 +78,6 @@ func (r *StatefulSetReconciler) instrumentStatefulset(ctx context.Context, req c
 
 	err := syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, ss.Status.ReadyReplicas, &ss, &ss.Spec.Template, instAppSSOwnerKey)
 	if err != nil {
-		logger.Error(err, "error syncing instrumented apps with statefulsets")
 		return err
 	}
 	return nil

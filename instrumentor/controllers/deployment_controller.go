@@ -65,7 +65,11 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	err = r.instrumentDeployment(ctx, req, logger, dep)
 	if err != nil {
-		logger.Error(err, "Encountered an error while trying to instrument deployment")
+		if apierrors.IsConflict(err) {
+			logger.V(0).Info("Conflict encountered and ignored during update")
+		} else {
+			logger.Error(err, "Encountered an error while trying to instrument deployment")
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -78,7 +82,6 @@ func (r *DeploymentReconciler) instrumentDeployment(ctx context.Context, req ctr
 	}
 	err := syncInstrumentedApps(ctx, &req, r.Client, r.Scheme, dep.Status.ReadyReplicas, &dep, &dep.Spec.Template, instAppDepOwnerKey)
 	if err != nil {
-		logger.Error(err, "error syncing instrumented apps with deployments")
 		return err
 	}
 

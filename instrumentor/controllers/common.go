@@ -128,14 +128,12 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 	if shouldInstrument(podTemplateSpec) {
 		err = processInstrumentedApps(ctx, podTemplateSpec, &instApp, logger, c, object)
 		if err != nil {
-			logger.Error(err, "Encountered an error while trying to process instrumented apps")
 			return err
 		}
 	}
 	if shouldRollBackTraces(podTemplateSpec) {
 		err = processRollback(ctx, podTemplateSpec, &instApp, logger, c, object)
 		if err != nil {
-			logger.Error(err, "Encountered an error while trying to process rollback")
 			return err
 		}
 	}
@@ -154,6 +152,10 @@ func syncInstrumentedApps(ctx context.Context, req *ctrl.Request, c client.Clien
 }
 
 func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	key := client.ObjectKeyFromObject(instApp)
+	if err := c.Get(ctx, key, instApp); err != nil {
+		return err
+	}
 	annotations := podTemplateSpec.GetAnnotations()
 	if annotations == nil || annotations[LogTypeAnnotation] == "" {
 		instApp.Spec.LogType = ""
@@ -163,13 +165,20 @@ func processLogType(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, in
 	}
 	err := c.Update(ctx, instApp)
 	if err != nil {
-		logger.Error(err, "error updating InstrumentedApp object with log type")
 		return err
 	}
 	return nil
 }
 
 func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	objectKey := client.ObjectKeyFromObject(object)
+	if err := c.Get(ctx, objectKey, object); err != nil {
+		return err
+	}
+	instAppKey := client.ObjectKeyFromObject(instApp)
+	if err := c.Get(ctx, instAppKey, instApp); err != nil {
+		return err
+	}
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, instApp)
 	if err != nil {
 		return err
@@ -211,6 +220,14 @@ func processRollback(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, i
 }
 
 func processInstrumentedApps(ctx context.Context, podTemplateSpec *v1.PodTemplateSpec, instApp *apiV1.InstrumentedApplication, logger logr.Logger, c client.Client, object client.Object) error {
+	objectKey := client.ObjectKeyFromObject(object)
+	if err := c.Get(ctx, objectKey, object); err != nil {
+		return err
+	}
+	instAppKey := client.ObjectKeyFromObject(instApp)
+	if err := c.Get(ctx, instAppKey, instApp); err != nil {
+		return err
+	}
 	instrumented, err := patch.IsTracesInstrumented(podTemplateSpec, instApp)
 	if err != nil {
 		return err
