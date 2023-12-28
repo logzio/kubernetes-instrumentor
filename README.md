@@ -52,7 +52,7 @@ make push-images
     - Enrich detection pod logs
     - Retry detection process on failure
     - Add easy connect instrumentation detection
-    - Reduce amount of instrumentor logs
+    - Reduce the amount of instrumentor logs
     - Handle conflicts from different reconciles gracefully
     - Update `nodejs` agent otel sdk
 * v1.0.8
