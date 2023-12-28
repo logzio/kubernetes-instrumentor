@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -51,6 +52,7 @@ const (
 	istioAnnotationValue   = "false"
 	linkerdAnnotationKey   = "linkerd.io/inject"
 	linkerdAnnotationValue = "disabled"
+	retryAnnotation        = "instrumentedapp.logz.io/retry-count"
 )
 
 // InstrumentedApplicationReconciler reconciles a InstrumentedApplication object
@@ -96,7 +98,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for _, pod := range childPods.Items {
-			// If pod finished -  read detection result
 			if pod.Status.Phase == corev1.PodSucceeded && len(pod.Status.ContainerStatuses) > 0 {
 				containerStatus := pod.Status.ContainerStatuses[0]
 				if containerStatus.State.Terminated == nil {
@@ -111,22 +112,53 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 						return ctrl.Result{}, err
 					}
 				}
+				// Reset the retry annotation upon successful detection
+				if _, ok := instrumentedApp.Annotations[retryAnnotation]; ok {
+					delete(instrumentedApp.Annotations, retryAnnotation)
+					err = r.Update(ctx, &instrumentedApp)
+					if err != nil {
+						if apierrors.IsConflict(err) {
+							logger.V(0).Info("Conflict encountered and ignored during removing retry annotation after successful detection")
+							return ctrl.Result{}, nil
+						} else {
+							return ctrl.Result{}, err
+						}
+					}
+				}
 			} else if pod.Status.Phase == corev1.PodFailed {
+				// Handle Pod Failure
 				var failureReason string
 				if len(pod.Status.ContainerStatuses) > 0 && pod.Status.ContainerStatuses[0].State.Terminated != nil {
 					failureReason = pod.Status.ContainerStatuses[0].State.Terminated.Reason
 				}
-				logger.V(0).Info("detection pod failed", "reason", failureReason)
-				instrumentedApp.Status.InstrumentationDetection.Phase = v1.ErrorInstrumentationDetectionPhase
-				err = r.Status().Update(ctx, &instrumentedApp)
-				if err != nil {
-					logger.Error(err, "error updating InstrumentedApp status")
-					return ctrl.Result{}, err
+				logger.Error(fmt.Errorf("detection pod failed"), "reason", failureReason)
+
+				retryCount, _ := strconv.Atoi(instrumentedApp.Annotations[retryAnnotation])
+				if retryCount >= 1 {
+					return ctrl.Result{}, fmt.Errorf("detection pod failed after retry: %s", failureReason)
 				}
+				// Set retry annotation for one retry
+				if instrumentedApp.Annotations == nil {
+					instrumentedApp.Annotations = make(map[string]string)
+				}
+				instrumentedApp.Annotations[retryAnnotation] = "1"
+				// Update CRD to save the annotation and reset the detection phase
+				instrumentedApp.Status.InstrumentationDetection.Phase = v1.PendingInstrumentationDetectionPhase
+				err = r.Update(ctx, &instrumentedApp)
+				if err != nil {
+					if apierrors.IsConflict(err) {
+						logger.V(0).Info("Conflict encountered and ignored during updating InstrumentedApp with retry annotation and resetting phase")
+						return ctrl.Result{}, nil
+					} else {
+						return ctrl.Result{}, err
+					}
+				}
+				// Requeue immediately for retry
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 	}
+
 	// Clean up finished pods
 	if instrumentedApp.Status.InstrumentationDetection.Phase == v1.CompletedInstrumentationDetectionPhase ||
 		instrumentedApp.Status.InstrumentationDetection.Phase == v1.ErrorInstrumentationDetectionPhase {
@@ -150,6 +182,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
