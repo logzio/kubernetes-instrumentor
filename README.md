@@ -50,6 +50,7 @@ make push-images
 * v1.0.9
     - Add `easy-conect-version` resource attributes to spans
     - Enrich detection pod logs
+    - Retry detection process on failure
     - Add easy connect instrumentation detection
     - Reduce amount of instrumentor logs
     - Handle conflicts from different reconciles gracefully
