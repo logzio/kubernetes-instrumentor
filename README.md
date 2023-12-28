@@ -46,10 +46,18 @@ make push-images
 ```
 
 ## Change log
+
+* v1.0.9
+    - Add `easy-conect-version` resource attributes to spans
+    - Enrich detection pod logs
+    - Add easy connect instrumentation detection
+    - Reduce amount of instrumentor logs
+    - Handle conflicts from different reconciles gracefully
+    - Update `nodejs` agent otel sdk
 * v1.0.8
     - Update `dotnet` agent:
-      - use `otlp` exporter instead of `zipkin`
-      - upgrade version `v0.5.0` -> `v1.2.0`
+      - Use `otlp` exporter instead of `zipkin`
+      - Upgrade version `v0.5.0` -> `v1.2.0`
       - Add env variables:
         - `OTEL_EXPORTER_OTLP_PROTOCOL`
         - `DOTNET_STARTUP_HOOKS`
@@ -67,13 +75,13 @@ make push-images
     - Minimize k8s client `Get()` calls to avoid mismatching objects while the dynamic update
     - Add metrics env vars to Python instrumentation (it breaks otherwise)
 * v1.0.5
-    - remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
-    - fix crd client updates
-    - added `ActiveServiceName` to custom resource definition
-    - handle `ActiveServiceName` updates
+    - Remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
+    - Fix crd client updates
+    - Added `ActiveServiceName` to custom resource definition
+    - Handle `ActiveServiceName` updates
 * v1.0.4
-    - fix log type condition
-    - change calculate app name logic
+    - Fix log type condition
+    - Change calculate app name logic
 * v1.0.3
     - Add support for opentelemetry detection
     - `nodejs`: check for existing `NODE_OPTIONS`
@@ -81,5 +89,5 @@ make push-images
 * v1.0.2
     - Add support for setting service name using logz.io/service-name annotation
 * v1.0.0 - Initial release
-    - language detector and auto instrumentation microservice for kubernetes
+    - Language detector and auto instrumentation microservice for kubernetes
 
