@@ -4,7 +4,7 @@ on:
     types: [published]
 jobs:
   push_to_registry:
-    name: Push Docker image to Docker Hub and aws public ecr
+    name: Push instrumentor and detector Docker image to Docker Hub and aws public ecr
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
