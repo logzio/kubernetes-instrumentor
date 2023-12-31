@@ -32,7 +32,14 @@ const sdk = new NodeSDK({
     instrumentations: [getNodeAutoInstrumentations()],
 });
 
-sdk.start().then(() => {
-        console.log("Tracing initialized");
-    }).catch((error: any) => console.log("Error initializing tracing", error));
+sdk.start()
+
+console.log("Tracing initialized");
+
+process.on("SIGTERM", () => {
+    sdk.shutdown()
+        .then(() => console.log("Tracing terminated"))
+        .catch((error) => console.log("Error terminating tracing", error))
+        .finally(() => process.exit(0));
+});
 
