@@ -48,7 +48,7 @@ make push-images
 ## Change log
 
 * v1.0.9
-    - Add `easy-conect-version` resource attributes to spans
+    - Add `easy.connect.version` resource attributes to spans
     - Enrich detection pod logs
     - Retry detection process on failure
     - Add easy connect instrumentation detection
