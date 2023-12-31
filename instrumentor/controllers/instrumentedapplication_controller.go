@@ -240,10 +240,7 @@ func (r *InstrumentedApplicationReconciler) startDetection(ctx context.Context, 
 }
 
 func (r *InstrumentedApplicationReconciler) shouldStartDetection(app *v1.InstrumentedApplication) bool {
-	if app.Status.InstrumentationDetection.Phase == v1.PendingInstrumentationDetectionPhase {
-		return true
-	}
-	return false
+	return app.Status.InstrumentationDetection.Phase == v1.PendingInstrumentationDetectionPhase
 }
 
 func (r *InstrumentedApplicationReconciler) isLangDetected(app *v1.InstrumentedApplication) bool {
