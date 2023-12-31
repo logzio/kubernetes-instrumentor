@@ -1,10 +1,10 @@
-name: Build and deploy agents images to dockerhub
+name: Build and deploy agents images to dockerhub and aws public ecr
 on:
   release:
     types: [published]
 jobs:
   push_to_registry:
-    name: Push Docker image to Docker Hub
+    name: Push Docker image to Docker Hub and aws public ecr
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
