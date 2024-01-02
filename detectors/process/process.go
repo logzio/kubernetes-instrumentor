@@ -272,12 +272,12 @@ func FindAllInContainer(podUID string, containerName string) ([]Details, error) 
 		log.Printf("PID: %d", container.ProcessID)
 		log.Printf("CmdLine: %s", container.CmdLine)
 		log.Println("Dependencies:")
-		for _, dep := range container.Dependencies {
-			log.Printf("Dependency: %s", dep)
+		for depKey, depValue := range container.Dependencies {
+			log.Printf("Dependency: %s=%s", depKey, depValue)
 		}
 		log.Println("Environment variables:")
-		for key, value := range container.Env {
-			log.Printf("%s=%s", key, value)
+		for varKey, varValue := range container.Env {
+			log.Printf("%s=%s", varKey, varValue)
 		}
 	}
 	return detectedContainers, nil
