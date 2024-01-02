@@ -53,7 +53,7 @@ make push-images
     - Add easy connect instrumentation detection
     - Reduce the amount of instrumentor logs
     - Handle conflicts from different reconciles gracefully
-    - Update `nodejs` agent otel sdk
+    - Update `nodejs` agent
     - Publish `arm` images
 * v1.0.8
     - Update `dotnet` agent:
