@@ -144,8 +144,8 @@ func (p *pythonPatcher) Patch(podSpec *v1.PodTemplateSpec, instrumentation *apiV
 			// calculate active service name
 			activeServiceName := calculateServiceName(podSpec, &container, instrumentation)
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  "OTEL_RESOURCE_ATTRIBUTES",
-				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", activeServiceName, PodNameEnvValue),
+				Name:  resourceAttrEnv,
+				Value: fmt.Sprintf("easy.connect.version=%s,service.name=%s,k8s.pod.name=%s", easyConnectVersion, activeServiceName, PodNameEnvValue),
 			})
 			// update the corresponding crd
 			for i := range instrumentation.Spec.Languages {
@@ -229,14 +229,14 @@ func (p *pythonPatcher) UpdateServiceNameEnv(podSpec *v1.PodTemplateSpec, instru
 			// remove old env
 			var newEnv []v1.EnvVar
 			for _, env := range container.Env {
-				if env.Name != "OTEL_RESOURCE_ATTRIBUTES" {
+				if env.Name != resourceAttrEnv {
 					newEnv = append(newEnv, env)
 				}
 			}
 			// calculate active service name
 			newEnv = append(newEnv, v1.EnvVar{
-				Name:  "OTEL_RESOURCE_ATTRIBUTES",
-				Value: fmt.Sprintf("service.name=%s,k8s.pod.name=%s", serviceName, PodNameEnvValue),
+				Name:  resourceAttrEnv,
+				Value: fmt.Sprintf("easy.connect.version=%s, service.name=%s,k8s.pod.name=%s", easyConnectVersion, serviceName, PodNameEnvValue),
 			})
 			container.Env = newEnv
 			// update the corresponding crd

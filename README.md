@@ -46,6 +46,29 @@ make push-images
 ```
 
 ## Change log
+
+* v1.0.9
+    - Add `easy.connect.version` resource attributes to spans
+    - Enrich detection pod logs
+    - Add easy connect instrumentation detection
+    - Reduce the amount of instrumentor logs
+    - Handle conflicts from different reconciles gracefully
+    - Update `nodejs` agent
+    - Publish `arm` images
+* v1.0.8
+    - Update `dotnet` agent:
+      - Use `otlp` exporter instead of `zipkin`
+      - Upgrade version `v0.5.0` -> `v1.2.0`
+      - Add env variables:
+        - `OTEL_EXPORTER_OTLP_PROTOCOL`
+        - `DOTNET_STARTUP_HOOKS`
+        - `OTEL_METRICS_EXPORTER`
+        - `OTEL_LOGS_EXPORTER`
+        - `OTEL_EXPORTER_OTLP_PROTOCOL`
+        - `OTEL_DOTNET_AUTO_HOME`
+        - `OTEL_RESOURCE_ATTRIBUTES`
+    - Update `python` agent:
+        - update deps
 * v1.0.7
     - Add opentelemetry dependency detection in dependency files for: `nodejs`, `python`, `dotnet`  
 * v1.0.6
@@ -53,13 +76,13 @@ make push-images
     - Minimize k8s client `Get()` calls to avoid mismatching objects while the dynamic update
     - Add metrics env vars to Python instrumentation (it breaks otherwise)
 * v1.0.5
-    - remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
-    - fix crd client updates
-    - added `ActiveServiceName` to custom resource definition
-    - handle `ActiveServiceName` updates
+    - Remove `JAVA_OPTS` `JAVA_TOOL_OPTIONS` `NODE_OPTIONS` if they are empty
+    - Fix crd client updates
+    - Added `ActiveServiceName` to custom resource definition
+    - Handle `ActiveServiceName` updates
 * v1.0.4
-    - fix log type condition
-    - change calculate app name logic
+    - Fix log type condition
+    - Change calculate app name logic
 * v1.0.3
     - Add support for opentelemetry detection
     - `nodejs`: check for existing `NODE_OPTIONS`
@@ -67,5 +90,5 @@ make push-images
 * v1.0.2
     - Add support for setting service name using logz.io/service-name annotation
 * v1.0.0 - Initial release
-    - language detector and auto instrumentation microservice for kubernetes
+    - Language detector and auto instrumentation microservice for kubernetes
 

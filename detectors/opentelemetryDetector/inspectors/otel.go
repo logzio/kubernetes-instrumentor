@@ -36,15 +36,33 @@ const (
 )
 
 func (o *openTelemetryInspector) Inspect(p *process.Details) bool {
+	// if instrumented with easyConnect, we don't want to report it as an opentelemetry process.
+	// this is because easyConnect is a tool that instruments the application with opentelemetry.
+	// we want to report the application as an opentelemetry process only if it is not instrumented with easyConnect.
+	if easyConnectInEnv(p.Env) {
+		return false
+	}
 	if otelInEnv(p.Env) || otelInCmdLine(p.CmdLine) || otelInDeps(p.Dependencies) {
 		return true
 	}
 	return false
 }
 
+func easyConnectInEnv(env map[string]string) bool {
+	for key, value := range env {
+		if key == "OTEL_RESOURCE_ATTRIBUTES" && strings.Contains(value, "easy.connect.version") {
+			log.Printf("found easy connect env var:\nkey: %s\nvalue: %s\n", key, value)
+			return true
+		}
+	}
+	return false
+
+}
+
 func otelInEnv(env map[string]string) bool {
 	for envKey := range env {
 		if strings.Contains(envKey, otelStr) || strings.Contains(envKey, otlpStr) {
+			log.Printf("found opentelemetry env var:\nkey: %s\nvalue: %s\n", envKey, env[envKey])
 			return true
 		}
 	}
@@ -53,7 +71,11 @@ func otelInEnv(env map[string]string) bool {
 }
 
 func otelInCmdLine(cmdLine string) bool {
-	return strings.Contains(cmdLine, otelStr) || strings.Contains(cmdLine, otlpStr)
+	if strings.Contains(cmdLine, otelStr) || strings.Contains(cmdLine, otlpStr) {
+		log.Printf("found opentelemetry refrence in cmdline: %s", cmdLine)
+		return true
+	}
+	return false
 }
 
 func otelInDeps(deps map[string]string) bool {

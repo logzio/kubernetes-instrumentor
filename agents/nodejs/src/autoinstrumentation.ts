@@ -5,6 +5,9 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
+const process = require("process");
+
+
 console.log("Instrumenting Node.js application");
 console.log("Active config: ", process.env.OTEL_SERVICE_NAME, process.env.OTEL_TRACES_EXPORTER, process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, process.env.OTEL_EXPORTER_OTLP_TRACES_PROTOCOL);
 
@@ -28,11 +31,21 @@ provider.register();
 console.log("Registering Node.js auto-instrumentations");
 const sdk = new NodeSDK({
     traceExporter: exporter,
-    autoDetectResources: true,
     instrumentations: [getNodeAutoInstrumentations()],
 });
 
-sdk.start().then(() => {
-        console.log("Tracing initialized");
-    }).catch((error: any) => console.log("Error initializing tracing", error));
+sdk.start()
+console.log("Tracing initialized");
+
+process.on("SIGTERM", () => {
+    sdk
+        .shutdown()
+        .then(
+            () => console.log("SDK shut down successfully"),
+            (err) => console.log("Error shutting down SDK", err)
+        )
+        .finally(() => process.exit(0));
+});
+
+
 

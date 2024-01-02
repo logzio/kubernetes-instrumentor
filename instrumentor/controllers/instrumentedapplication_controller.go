@@ -96,7 +96,6 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for _, pod := range childPods.Items {
-			// If pod finished -  read detection result
 			if pod.Status.Phase == corev1.PodSucceeded && len(pod.Status.ContainerStatuses) > 0 {
 				containerStatus := pod.Status.ContainerStatuses[0]
 				if containerStatus.State.Terminated == nil {
@@ -104,20 +103,29 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 				}
 				err = r.updatePodWithDetectionResult(ctx, containerStatus, logger, instrumentedApp, req.NamespacedName)
 				if err != nil {
-					return ctrl.Result{}, err
+					if apierrors.IsConflict(err) {
+						logger.V(0).Info("Conflict encountered and ignored during instrumentedApp update")
+						return ctrl.Result{}, nil
+					} else {
+						return ctrl.Result{}, err
+					}
 				}
+
 			} else if pod.Status.Phase == corev1.PodFailed {
-				logger.V(0).Info("lang detection pod failed. marking as error")
-				instrumentedApp.Status.InstrumentationDetection.Phase = v1.ErrorInstrumentationDetectionPhase
-				err = r.Status().Update(ctx, &instrumentedApp)
-				if err != nil {
-					logger.Error(err, "error updating InstrumentedApp status")
-					return ctrl.Result{}, err
+				// Handle Pod Failure
+				failureReason := "No specific reason provided by kubernetes" // Default message
+				if len(pod.Status.ContainerStatuses) > 0 {
+					terminatedState := pod.Status.ContainerStatuses[0].State.Terminated
+					if terminatedState != nil && terminatedState.Reason != "" {
+						failureReason = terminatedState.Reason
+					}
 				}
+				logger.Error(fmt.Errorf("detection pod failed: %s", failureReason), failureReason)
 				return ctrl.Result{}, nil
 			}
 		}
 	}
+
 	// Clean up finished pods
 	if instrumentedApp.Status.InstrumentationDetection.Phase == v1.CompletedInstrumentationDetectionPhase ||
 		instrumentedApp.Status.InstrumentationDetection.Phase == v1.ErrorInstrumentationDetectionPhase {
@@ -141,6 +149,7 @@ func (r *InstrumentedApplicationReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -161,17 +170,14 @@ func (r *InstrumentedApplicationReconciler) updatePodWithDetectionResult(ctx con
 		logger.V(0).Info("detection result", "result", detectionResult)
 		instrumentedApp.Spec.Languages = detectionResult.LanguageByContainer
 		instrumentedApp.Spec.Applications = detectionResult.ApplicationByContainer
-
 		err = r.Update(ctx, &instrumentedApp)
 		if err != nil {
-			logger.Error(err, "error updating InstrumentedApp object with detection result")
 			return err
 		}
 
 		instrumentedApp.Status.InstrumentationDetection.Phase = v1.CompletedInstrumentationDetectionPhase
 		err = r.Status().Update(ctx, &instrumentedApp)
 		if err != nil {
-			logger.Error(err, "error updating InstrumentedApp phase status with detection result")
 			return err
 		}
 	}

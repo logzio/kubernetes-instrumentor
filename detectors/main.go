@@ -26,6 +26,7 @@ import (
 	"github.com/logzio/kubernetes-instrumentor/detectors/langDetector"
 	"github.com/logzio/kubernetes-instrumentor/detectors/opentelemetryDetector"
 	"github.com/logzio/kubernetes-instrumentor/detectors/process"
+	"github.com/logzio/kubernetes-instrumentor/detectors/serviceNameDetector"
 	"io/fs"
 	"log"
 	"os"
@@ -55,13 +56,14 @@ func main() {
 			// OpenTelemetry detection if language detected
 			otelDetected := opentelemetryDetector.DetectApplication(processes)
 			log.Printf("opentelemetry detection result: %v\n", otelDetected)
-
+			activeServiceName := serviceNameDetector.DetectServiceName(processes)
+			log.Printf("service name detection result: %s\n", activeServiceName)
 			containerResults = append(containerResults, common.LanguageByContainer{
 				ContainerName:              containerName,
 				Language:                   processResults[0],
 				ProcessName:                processName,
 				OpentelemetryPreconfigured: otelDetected,
-				ActiveServiceName:          "",
+				ActiveServiceName:          activeServiceName,
 			})
 		}
 
