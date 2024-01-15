@@ -198,7 +198,7 @@ func (n *nodeJsPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for i, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, envVar := range container.Env {
-			if envVar.Name != NodeIPEnvName && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvTraceProtocol && envVar.Name != nodeEnvServiceName {
+			if envVar.Name != NodeIPEnvName && envVar.Name != resourceAttrEnv && envVar.Name != nodeEnvNodeDebug && envVar.Name != nodeEnvTraceExporter && envVar.Name != nodeEnvEndpoint && envVar.Name != nodeEnvTraceProtocol && envVar.Name != nodeEnvServiceName {
 				if envVar.Name == nodeEnvNodeOptions {
 					envVar.Value = strings.Replace(envVar.Value, fmt.Sprintf("--require %s/autoinstrumentation.js", nodeMountPath), "", -1)
 					// Remove the node options if it's empty
