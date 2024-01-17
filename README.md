@@ -47,6 +47,11 @@ make push-images
 
 ## Change log
 
+* v1.0.10
+  - Improve `nodejs` instrumentation:
+    - Use `BatchSpanProcessor`
+    - Disable `@opentelemetry/instrumentation-fs` To improve performance and avoid high memory usage on startup (https://github.com/open-telemetry/opentelemetry-js-contrib/issues/1344)
+    - Fix bug to delete `OTEL_RESOURCE_ATTRIBUTES` on rollback (nodejs)
 * v1.0.9
     - Add `easy.connect.version` resource attributes to spans
     - Enrich detection pod logs

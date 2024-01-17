@@ -1,4 +1,4 @@
-TAG ?= v1.0.9
+TAG ?= v1.0.10
 AWS_ECR_REGISTRY=public.ecr.aws/logzio
 
 .PHONY: build-push-images-multiarch-ecr

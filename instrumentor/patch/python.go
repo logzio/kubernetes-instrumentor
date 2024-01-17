@@ -204,7 +204,7 @@ func (p *pythonPatcher) UnPatch(podSpec *v1.PodTemplateSpec) error {
 	for i, container := range podSpec.Spec.Containers {
 		var newEnv []v1.EnvVar
 		for _, env := range container.Env {
-			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != "OTEL_RESOURCE_ATTRIBUTES" && env.Name != envOtelTracesExporter && env.Name != envOtelExporterOTLPTracesProtocol && env.Name != envOtelExporterOTLPMetricsProtocol && env.Name != envOtelMetricsExporter && env.Name != httpProtoProtocol {
+			if env.Name != NodeIPEnvName && env.Name != PodNameEnvVName && env.Name != envLogCorrelation && env.Name != "PYTHONPATH" && env.Name != "OTEL_EXPORTER_OTLP_ENDPOINT" && env.Name != resourceAttrEnv && env.Name != envOtelTracesExporter && env.Name != envOtelExporterOTLPTracesProtocol && env.Name != envOtelExporterOTLPMetricsProtocol && env.Name != envOtelMetricsExporter && env.Name != httpProtoProtocol {
 				newEnv = append(newEnv, env)
 			}
 		}
