@@ -47,6 +47,10 @@ make push-images
 
 ## Change log
 
+* v1.0.11
+  - Update `python` instrumentation:
+    - update base image: `python:3.10-alpine` -> `python:3.11-alpine` (https://github.com/open-telemetry/opentelemetry-operator/issues/1515)
+  - Create `dotnet` agent version with instrumentation `v0.5.0` (tag: `logzio/otel-agent-dotnet:v1.0.11-0.5.0`)
 * v1.0.10
   - Improve `nodejs` instrumentation:
     - Use `BatchSpanProcessor`
